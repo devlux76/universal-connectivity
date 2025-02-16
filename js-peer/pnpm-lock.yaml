@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  '@libp2p/interface': ^2.5.0
+
 importers:
 
   .:

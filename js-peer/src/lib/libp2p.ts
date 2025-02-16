@@ -10,7 +10,7 @@ import { yamux } from '@chainsafe/libp2p-yamux'
 import { bootstrap } from '@libp2p/bootstrap'
 import { Multiaddr } from '@multiformats/multiaddr'
 import { sha256 } from 'multiformats/hashes/sha2'
-import type { Connection, Message, SignedMessage, PeerId, Libp2p, Libp2pOptions } from '@libp2p/interface'
+import type { Connection, Message, SignedMessage, PeerId, Libp2p } from '@libp2p/interface'
 import { gossipsub } from '@chainsafe/libp2p-gossipsub'
 import { webSockets } from '@libp2p/websockets'
 import { webTransport } from '@libp2p/webtransport'
@@ -23,7 +23,7 @@ import first from 'it-first'
 import { forComponent, enable } from './logger'
 import { directMessage } from './direct-message'
 import type { Libp2pType } from '@/context/ctx'
-import { loadOrCreateIdentity } from './identity'
+import { generateKeyPair, privateKeyFromProtobuf, privateKeyToProtobuf } from '@libp2p/crypto/keys'
 
 const log = forComponent('libp2p')
 
@@ -36,10 +36,20 @@ export async function startLibp2p(): Promise<Libp2pType> {
   const { bootstrapAddrs, relayListenAddrs } = await getBootstrapMultiaddrs(delegatedClient)
   log('starting libp2p with bootstrapAddrs %o and relayListenAddrs: %o', bootstrapAddrs, relayListenAddrs)
 
-  const peerId = await loadOrCreateIdentity()
+  const privateKey = await generateKeyPair('Ed25519')
+  const keyBytes = privateKeyToProtobuf(privateKey)
+  const key = privateKeyFromProtobuf(keyBytes)
+  if(key.equals(privateKey)) {
+    console.log('### KEYS: Keys are equal ###')
+  }else{
+    console.log('### KEYS: Keys are NOT equal ###')
+  }
+  const options ={
+    privateKey
+  }
 
-  const libp2p = await createLibp2p<Libp2pOptions & { peerId: PeerId }>({
-    peerId, // Use our persistent PeerId
+  const libp2p = await createLibp2p({
+    ...options,
     addresses: {
       listen: [
         // Listen for webRTC connection
@@ -131,7 +141,7 @@ export async function msgIdFnStrictNoSign(msg: Message): Promise<Uint8Array> {
 async function dialWebRTCMaddrs(libp2p: Libp2p, multiaddrs: Multiaddr[]): Promise<void> {
   // Filter webrtc (browser-to-browser) multiaddrs
   const webRTCMadrs = multiaddrs.filter((maddr) => maddr.protoNames().includes('webrtc'))
-  log(`dialling WebRTC multiaddrs: %o`, webRTCMadrs)
+  log(`dialing WebRTC multiaddrs: %o`, webRTCMadrs)
 
   for (const addr of webRTCMadrs) {
     try {
