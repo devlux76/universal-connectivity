@@ -1,7 +1,3 @@
 {
-  "extends": "next/core-web-vitals",
-  "rules": {
-    "@next/next/no-img-element": "off"
-  },
-  "ignorePatterns": ["node_modules/", "build/", ".next/", "src/lib/protobuf/"]
+  "extends": "next/core-web-vitals"
 }
