@@ -65,7 +65,7 @@ export const useChatContext = () => {
   return useContext(chatContext)
 }
 
-export const ChatProvider = ({ children }: any) => {
+export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([])
   const [directMessages, setDirectMessages] = useState<DirectMessages>({})
   const [files, setFiles] = useState<Map<string, ChatFile>>(new Map<string, ChatFile>())

@@ -1,3 +1,29 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "plugins": ["@typescript-eslint"],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaVersion": 2020
+  },
+  "env": {
+    "browser": true,
+    "es2020": true,
+    "node": true
+  },
+  "rules": {
+    "@typescript-eslint/no-namespace": "off",
+    "@typescript-eslint/no-unnecessary-boolean-literal-compare": "off",
+    "@typescript-eslint/no-empty-interface": "off",
+    "@next/next/no-img-element": "warn",
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "prefer-const": "warn",
+    "no-var": "error",
+    "@typescript-eslint/ban-ts-comment": ["error", { "ts-expect-error": "allow-with-description", "ts-ignore": false }],
+    "@typescript-eslint/no-explicit-any": "error"
+  }
 }

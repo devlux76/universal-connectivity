@@ -148,12 +148,14 @@ type Color = keyof typeof colors
 export function Switch({
   color = 'dark/zinc',
   className,
-  children,
+  _children: _children_,
+  _children,
   ...props
 }: {
   color?: Color
   className?: string
   children?: React.ReactNode
+  _children?: React.ReactNode
 } & Omit<HeadlessSwitchProps, 'children'>) {
   return (
     <HeadlessSwitch

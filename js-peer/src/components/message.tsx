@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { useLibp2pContext } from '@/context/ctx'
-import { ChatMessage, useChatContext } from '@/context/chat-ctx'
+import { ChatMessage } from '@/context/chat-ctx'
 import { PeerWrapper } from './peer'
 import { peerIdFromString } from '@libp2p/peer-id'
 import { useMarkAsRead } from '@/hooks/useMarkAsRead'

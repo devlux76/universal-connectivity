@@ -81,7 +81,7 @@ export default function ChatContainer() {
       })
 
       setInput('')
-    } catch (e: any) {
+    } catch (e: unknown) {
       log(e)
     }
   }, [libp2p, setDirectMessages, directMessages, roomId, input])
@@ -141,7 +141,7 @@ export default function ChatContainer() {
   )
 
   const handleSend = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement>) => {
+    async (_e: React.MouseEvent<HTMLButtonElement>) => {
       if (roomId === PUBLIC_CHAT_ROOM_ID) {
         sendPublicMessage()
       } else {

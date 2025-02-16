@@ -35,12 +35,10 @@ export async function startLibp2p(): Promise<Libp2pType> {
   const { bootstrapAddrs, relayListenAddrs } = await getBootstrapMultiaddrs(delegatedClient)
   log('starting libp2p with bootstrapAddrs %o and relayListenAddrs: %o', bootstrapAddrs, relayListenAddrs)
 
-  let libp2p: Libp2pType
-
-  libp2p = await createLibp2p({
+  const libp2p = await createLibp2p({
     addresses: {
       listen: [
-        // 👇 Listen for webRTC connection
+        // Listen for webRTC connection
         '/webrtc',
         ...relayListenAddrs,
       ],
@@ -49,9 +47,9 @@ export async function startLibp2p(): Promise<Libp2pType> {
       webTransport(),
       webSockets(),
       webRTC(),
-      // 👇 Required to estalbish connections with peers supporting WebRTC-direct, e.g. the Rust-peer
+      // Required to estalbish connections with peers supporting WebRTC-direct, e.g. the Rust-peer
       webRTCDirect(),
-      // 👇 Required to create circuit relay reservations in order to hole punch browser-to-browser WebRTC connections
+      // Required to create circuit relay reservations in order to hole punch browser-to-browser WebRTC connections
       circuitRelayTransport(),
     ],
     connectionEncrypters: [noise()],
@@ -99,7 +97,7 @@ export async function startLibp2p(): Promise<Libp2pType> {
     log(`changed multiaddrs: peer ${peer.id.toString()} multiaddrs: ${multiaddrs}`)
   })
 
-  // 👇 explicitly dial peers discovered via pubsub
+  // explicitly dial peers discovered via pubsub
   libp2p.addEventListener('peer:discovery', (event) => {
     const { multiaddrs, id } = event.detail
 
@@ -118,7 +116,7 @@ export async function startLibp2p(): Promise<Libp2pType> {
 // every agent in network should use the same message id function
 // messages could be perceived as duplicate if this isnt added (as opposed to rust peer which has unique message ids)
 export async function msgIdFnStrictNoSign(msg: Message): Promise<Uint8Array> {
-  var enc = new TextEncoder()
+  const enc = new TextEncoder()
 
   const signedMessage = msg as SignedMessage
   const encodedSeqNum = enc.encode(signedMessage.sequenceNumber.toString())
@@ -136,7 +134,7 @@ async function dialWebRTCMaddrs(libp2p: Libp2p, multiaddrs: Multiaddr[]): Promis
       log(`attempting to dial webrtc multiaddr: %o`, addr)
       await libp2p.dial(addr)
       return // if we succeed dialing the peer, no need to try another address
-    } catch (error) {
+    } catch (error: unknown) {
       log.error(`failed to dial webrtc multiaddr: %o`, addr)
     }
   }
@@ -148,7 +146,7 @@ export const connectToMultiaddr = (libp2p: Libp2p) => async (multiaddr: Multiadd
     const conn = await libp2p.dial(multiaddr)
     log('connected to %p on %a', conn.remotePeer, conn.remoteAddr)
     return conn
-  } catch (e) {
+  } catch (e: unknown) {
     console.error(e)
     throw e
   }

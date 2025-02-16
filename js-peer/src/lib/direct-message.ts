@@ -135,16 +135,16 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
       if (res.status !== dm.Status.OK) {
         throw new Error(ERRORS.STATUS_NOT_OK(res.status))
       }
-    } catch (e: any) {
-      stream?.abort(e)
+    } catch (e: unknown) {
+      if (e instanceof Error) stream?.abort(e)
       throw e
     } finally {
       try {
         await stream?.close({
           signal: AbortSignal.timeout(5000),
         })
-      } catch (err: any) {
-        stream?.abort(err)
+      } catch (err: unknown) {
+        if (err instanceof Error) stream?.abort(err)
         throw err
       }
     }
@@ -178,16 +178,16 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
       }
 
       this.dispatchEvent(new CustomEvent(directMessageEvent, { detail }))
-    } catch (e: any) {
-      stream?.abort(e)
+    } catch (e: unknown) {
+      if (e instanceof Error) stream?.abort(e)
       throw e
     } finally {
       try {
         await stream?.close({
           signal: AbortSignal.timeout(5000),
         })
-      } catch (err: any) {
-        stream?.abort(err)
+      } catch (err: unknown) {
+        if (err instanceof Error) stream?.abort(err)
         throw err
       }
     }

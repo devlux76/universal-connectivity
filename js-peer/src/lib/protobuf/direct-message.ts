@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
 /* eslint-disable @typescript-eslint/no-empty-interface */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { type Codec, decodeMessage, type DecodeOptions, encodeMessage, enumeration, message } from 'protons-runtime'
 import type { Uint8ArrayList } from 'uint8arraylist'
@@ -27,7 +28,7 @@ export namespace dm {
               w.ldelim()
             }
           },
-          (reader, length, opts = {}) => {
+          (reader, length, _opts = {}) => {
             const obj: any = {}
 
             const end = length == null ? reader.len : reader.pos + length
@@ -90,7 +91,7 @@ export namespace dm {
               w.ldelim()
             }
           },
-          (reader, length, opts = {}) => {
+          (reader, length, _opts = {}) => {
             const obj: any = {
               clientVersion: '',
               timestamp: 0n,
@@ -188,8 +189,9 @@ export namespace dm {
               w.ldelim()
             }
           },
-          (reader, length, opts = {}) => {
-            const obj: any = {
+          (reader, length, _opts = {}) => {
+            const obj: DirectMessageRequest = {
+              metadata: undefined,
               content: '',
               type: '',
             }
@@ -202,7 +204,7 @@ export namespace dm {
               switch (tag >>> 3) {
                 case 1: {
                   obj.metadata = dm.Metadata.codec().decode(reader, reader.uint32(), {
-                    limits: opts.limits?.metadata,
+                    limits: _opts.limits?.metadata,
                   })
                   break
                 }
@@ -237,7 +239,11 @@ export namespace dm {
       buf: Uint8Array | Uint8ArrayList,
       opts?: DecodeOptions<DirectMessageRequest>,
     ): DirectMessageRequest => {
-      return decodeMessage(buf, DirectMessageRequest.codec(), opts)
+      try {
+        return decodeMessage(buf, DirectMessageRequest.codec(), opts)
+      } catch (e: unknown) {
+        throw e
+      }
     }
   }
 
@@ -277,9 +283,11 @@ export namespace dm {
               w.ldelim()
             }
           },
-          (reader, length, opts = {}) => {
-            const obj: any = {
+          (reader, length, _opts = {}) => {
+            const obj: DirectMessageResponse = {
+              metadata: undefined,
               status: Status.UNKNOWN,
+              statusText: undefined,
             }
 
             const end = length == null ? reader.len : reader.pos + length
@@ -290,7 +298,7 @@ export namespace dm {
               switch (tag >>> 3) {
                 case 1: {
                   obj.metadata = dm.Metadata.codec().decode(reader, reader.uint32(), {
-                    limits: opts.limits?.metadata,
+                    limits: _opts.limits?.metadata,
                   })
                   break
                 }
@@ -343,7 +351,7 @@ export namespace dm {
             w.ldelim()
           }
         },
-        (reader, length, opts = {}) => {
+        (reader, length, _opts = {}) => {
           const obj: any = {}
 
           const end = length == null ? reader.len : reader.pos + length

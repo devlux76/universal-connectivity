@@ -44,7 +44,7 @@ export default function Home() {
   }, [libp2p, setListenAddresses])
 
   const handleConnectToMultiaddr = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement>) => {
+    async (_e: React.MouseEvent<HTMLButtonElement>) => {
       setErr('')
       if (!maddr) {
         return
@@ -52,8 +52,8 @@ export default function Home() {
       setDialling(true)
       try {
         await connectToMultiaddr(libp2p)(multiaddr(maddr))
-      } catch (e: any) {
-        setErr(e?.message ?? 'Error connecting')
+      } catch (e: unknown) {
+        setErr(e instanceof Error ? e.message : 'Error connecting')
       } finally {
         setDialling(false)
       }
