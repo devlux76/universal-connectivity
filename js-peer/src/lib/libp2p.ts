@@ -36,18 +36,18 @@ export async function startLibp2p(): Promise<Libp2pType> {
   const { bootstrapAddrs, relayListenAddrs } = await getBootstrapMultiaddrs(delegatedClient)
   log('starting libp2p with bootstrapAddrs %o and relayListenAddrs: %o', bootstrapAddrs, relayListenAddrs)
 
-  const privateKey = await generateKeyPair('Ed25519')
-  const keyBytes = privateKeyToProtobuf(privateKey)
-  const key = privateKeyFromProtobuf(keyBytes)
-  if(key.equals(privateKey)) {
-    console.log('### KEYS: Keys are equal ###')
-  }else{
-    console.log('### KEYS: Keys are NOT equal ###')
+  let privateKey;
+  try {
+    const storedKey = localStorage.getItem('libp2p-key');
+    privateKey = storedKey ? privateKeyFromProtobuf(Uint8Array.from(JSON.parse(storedKey))) : await generateKeyPair('Ed25519');
+    if (!storedKey) localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
+  } catch {
+    privateKey = await generateKeyPair('Ed25519');
+    localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
   }
-  const options ={
+  const options = {
     privateKey
   }
-
   const libp2p = await createLibp2p({
     ...options,
     addresses: {
