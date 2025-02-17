@@ -27,7 +27,7 @@ import { generateKeyPair, privateKeyFromProtobuf, privateKeyToProtobuf } from '@
 
 const log = forComponent('libp2p')
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 30;
 const INITIAL_BACKOFF_MS = 1000;
 
 async function retryWithBackoff<T>(
