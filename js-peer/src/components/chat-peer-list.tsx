@@ -3,10 +3,26 @@ import { TOPICS } from '@/lib/constants'
 import React, { useEffect, useState } from 'react'
 import type { PeerId } from '@libp2p/interface'
 import { PeerWrapper } from './peer'
+import { loadTopicsFromStorage, storeTopicsInStorage } from '../lib/libp2p';
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
+  const [topics, setTopics] = useState<string[]>([]);
+  const [newTopic, setNewTopic] = useState('');
+
+  useEffect(() => {
+    setTopics(Array.from(loadTopicsFromStorage()));
+  }, []);
+
+  const handleCreateRoom = () => {
+    if (newTopic.trim()) {
+      const updated = new Set(topics).add(newTopic.trim());
+      storeTopicsInStorage(updated);
+      setTopics(Array.from(updated));
+      setNewTopic('');
+    }
+  };
 
   useEffect(() => {
     const onSubscriptionChange = () => {
@@ -38,6 +54,20 @@ export function ChatPeerList() {
             <PeerWrapper peer={p} self={false} withName={true} withUnread={true} />
           </div>
         ))}
+      </div>
+      <h2>Rooms</h2>
+      <ul>
+        {topics.map(topic => (
+          <li key={topic}>{topic}</li>
+        ))}
+      </ul>
+      <div>
+        <input
+          value={newTopic}
+          onChange={e => setNewTopic(e.target.value)}
+          placeholder="New room name"
+        />
+        <button onClick={handleCreateRoom}>Create</button>
       </div>
     </div>
   )

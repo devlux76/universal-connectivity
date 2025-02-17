@@ -34,7 +34,7 @@ const INITIAL_BACKOFF_MS = 1000;
 
 const STORAGE_KEY = 'subscribedTopics'
 
-function loadTopicsFromStorage(): Set<string> {
+export function loadTopicsFromStorage(): Set<string> {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
     if (!data) return new Set()
@@ -44,7 +44,7 @@ function loadTopicsFromStorage(): Set<string> {
   }
 }
 
-function storeTopicsInStorage(topics: Set<string>) {
+export function storeTopicsInStorage(topics: Set<string>) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(topics)))
 }
 
