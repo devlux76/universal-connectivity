@@ -73,21 +73,17 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   const messageCB = (evt: CustomEvent<Message>) => {
     const { topic, data } = evt.detail
-    switch (topic) {
-      case TOPICS.CHAT: {
-        chatMessageCB(evt, topic, data)
-        break
-      }
-      case TOPICS.FILE: {
-        chatFileMessageCB(evt, topic, data)
-        break
-      }
-      case TOPICS.PEER_DISCOVERY: {
-        break
-      }
-      default: {
-        console.error(`Unexpected event %o on gossipsub topic: ${topic}`, evt)
-      }
+    // Type assertion to match the const-asserted topic types
+    const topicStr = topic as typeof TOPICS.CHAT[number] | typeof TOPICS.FILE[number] | typeof TOPICS.PEER_DISCOVERY[number];
+
+    if (TOPICS.CHAT.includes(topicStr as typeof TOPICS.CHAT[number])) {
+      chatMessageCB(evt, topic, data)
+    } else if (TOPICS.FILE.includes(topicStr as typeof TOPICS.FILE[number])) {
+      chatFileMessageCB(evt, topic, data)
+    } else if (TOPICS.PEER_DISCOVERY.includes(topicStr as typeof TOPICS.PEER_DISCOVERY[number])) {
+      // Do nothing for peer discovery topics
+    } else {
+      console.error(`Unexpected event %o on gossipsub topic: ${topic}`, evt)
     }
   }
 

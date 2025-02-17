@@ -10,9 +10,15 @@ export function ChatPeerList() {
 
   useEffect(() => {
     const onSubscriptionChange = () => {
-      const subscribers = libp2p.services.pubsub.getSubscribers(TOPICS.CHAT) as PeerId[]
-      setSubscribers(subscribers)
+      // Get subscribers from all chat topics and deduplicate them
+      const allSubscribers = TOPICS.CHAT.flatMap(topic => 
+        libp2p.services.pubsub.getSubscribers(topic) as PeerId[]
+      );
+      const uniqueSubscribers = [...new Set(allSubscribers.map(p => p.toString()))]
+        .map(str => allSubscribers.find(p => p.toString() === str)!);
+      setSubscribers(uniqueSubscribers);
     }
+    
     onSubscriptionChange()
     libp2p.services.pubsub.addEventListener('subscription-change', onSubscriptionChange)
     return () => {
