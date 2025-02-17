@@ -24,11 +24,64 @@ import { forComponent, enable } from './logger'
 import { directMessage } from './direct-message'
 import type { Libp2pType } from '@/context/ctx'
 import { generateKeyPair, privateKeyFromProtobuf, privateKeyToProtobuf } from '@libp2p/crypto/keys'
+import { useEffect } from 'react'
+import { useLibp2pContext } from '@/context/ctx'
 
 const log = forComponent('libp2p')
 
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
+
+const STORAGE_KEY = 'subscribedTopics'
+
+function loadTopicsFromStorage(): Set<string> {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY)
+    if (!data) return new Set()
+    return new Set(JSON.parse(data))
+  } catch {
+    return new Set()
+  }
+}
+
+function storeTopicsInStorage(topics: Set<string>) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(topics)))
+}
+
+export function useAutoSubscribeToNewTopics() {
+  const { libp2p } = useLibp2pContext()
+
+  useEffect(() => {
+    const knownTopics = loadTopicsFromStorage()
+    for (const t of libp2p.services.pubsub.getTopics()) {
+      knownTopics.add(t)
+    }
+
+    const onSubscriptionChange = () => {
+      for (const topic of libp2p.services.pubsub.getTopics()) {
+        if (!knownTopics.has(topic)) {
+          knownTopics.add(topic)
+          libp2p.services.pubsub.subscribe(topic)
+          storeTopicsInStorage(knownTopics)
+        }
+      }
+    }
+
+    libp2p.services.pubsub.addEventListener('subscription-change', onSubscriptionChange)
+
+    knownTopics.forEach((t) => {
+      if (!libp2p.services.pubsub.getTopics().includes(t)) {
+        libp2p.services.pubsub.subscribe(t)
+      }
+    })
+
+    storeTopicsInStorage(knownTopics)
+
+    return () => {
+      libp2p.services.pubsub.removeEventListener('subscription-change', onSubscriptionChange)
+    }
+  }, [libp2p])
+}
 
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
