@@ -27,6 +27,29 @@ import { generateKeyPair, privateKeyFromProtobuf, privateKeyToProtobuf } from '@
 
 const log = forComponent('libp2p')
 
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF_MS = 1000;
+
+async function retryWithBackoff<T>(
+  operation: () => Promise<T>,
+  retries = MAX_RETRIES,
+  backoff = INITIAL_BACKOFF_MS,
+  onRetry?: (attempt: number, error: Error) => void
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (retries === 0) throw error;
+    
+    if (onRetry) {
+      onRetry(MAX_RETRIES - retries + 1, error as Error);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, backoff));
+    return retryWithBackoff(operation, retries - 1, backoff * 2, onRetry);
+  }
+}
+
 export async function startLibp2p(): Promise<Libp2pType> {
   // enable verbose logging in browser console to view debug logs
   enable('ui*,libp2p*,-libp2p:connection-manager*,-*:trace')
@@ -45,63 +68,82 @@ export async function startLibp2p(): Promise<Libp2pType> {
     privateKey = await generateKeyPair('Ed25519');
     localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
   }
-  const options = {
-    privateKey
-  }
-  const libp2p = await createLibp2p({
-    ...options,
-    addresses: {
-      listen: [
-        // Listen for webRTC connection
-        '/webrtc',
-        ...relayListenAddrs,
-      ],
-    },
-    transports: [
-      webTransport(),
-      webSockets(),
-      webRTC(),
-      // Required to estalbish connections with peers supporting WebRTC-direct, e.g. the Rust-peer
-      webRTCDirect(),
-      // Required to create circuit relay reservations in order to hole punch browser-to-browser WebRTC connections
-      circuitRelayTransport(),
-    ],
-    connectionEncrypters: [noise()],
-    streamMuxers: [yamux()],
-    connectionGater: {
-      denyDialMultiaddr: async () => false,
-    },
-    peerDiscovery: [
-      pubsubPeerDiscovery({
-        interval: 10_000,
-        topics: [PUBSUB_PEER_DISCOVERY],
-        listenOnly: false,
-      }),
-      bootstrap({
-        // The app-specific bootstrappers that use WebTransport and WebRTC-direct and have ephemeral multiadrrs
-        // that are resolved above using the delegated routing API
-        list: bootstrapAddrs,
-      }),
-    ],
-    services: {
-      pubsub: gossipsub({
-        allowPublishToZeroTopicPeers: true,
-        msgIdFn: msgIdFnStrictNoSign,
-        ignoreDuplicatePublishError: true,
-      }),
-      // Delegated routing helps us discover the ephemeral multiaddrs of the dedicated go and rust bootstrap peers
-      // This relies on the public delegated routing endpoint https://docs.ipfs.tech/concepts/public-utilities/#delegated-routing
-      delegatedRouting: () => delegatedClient,
-      identify: identify(),
-      // Custom protocol for direct messaging
-      directMessage: directMessage(),
-      ping: ping(),
-    },
-  })
 
-  if (!libp2p) {
-    throw new Error('Failed to create libp2p node')
+  const createNode = async () => {
+    const options = {
+      privateKey
+    }
+    const node = await createLibp2p({
+      ...options,
+      addresses: {
+        listen: [
+          // Listen for webRTC connection
+          '/webrtc',
+          ...relayListenAddrs,
+        ],
+      },
+      transports: [
+        webTransport(),
+        webSockets(),
+        webRTC(),
+        // Required to estalbish connections with peers supporting WebRTC-direct, e.g. the Rust-peer
+        webRTCDirect(),
+        // Required to create circuit relay reservations in order to hole punch browser-to-browser WebRTC connections
+        circuitRelayTransport(),
+      ],
+      connectionEncrypters: [noise()],
+      streamMuxers: [yamux()],
+      connectionGater: {
+        denyDialMultiaddr: async () => false,
+      },
+      peerDiscovery: [
+        pubsubPeerDiscovery({
+          interval: 10_000,
+          topics: [PUBSUB_PEER_DISCOVERY],
+          listenOnly: false,
+        }),
+        bootstrap({
+          // The app-specific bootstrappers that use WebTransport and WebRTC-direct and have ephemeral multiadrrs
+          // that are resolved above using the delegated routing API
+          list: bootstrapAddrs,
+        }),
+      ],
+      services: {
+        pubsub: gossipsub({
+          allowPublishToZeroTopicPeers: true,
+          msgIdFn: msgIdFnStrictNoSign,
+          ignoreDuplicatePublishError: true,
+        }),
+        // Delegated routing helps us discover the ephemeral multiaddrs of the dedicated go and rust bootstrap peers
+        // This relies on the public delegated routing endpoint https://docs.ipfs.tech/concepts/public-utilities/#delegated-routing
+        delegatedRouting: () => delegatedClient,
+        identify: identify(),
+        // Custom protocol for direct messaging
+        directMessage: directMessage(),
+        ping: ping(),
+      },
+    })
+
+    if (!node) {
+      throw new Error('Failed to create libp2p node')
+    }
+
+    return node;
   }
+
+  const libp2p = await retryWithBackoff(
+    createNode,
+    MAX_RETRIES,
+    INITIAL_BACKOFF_MS,
+    (attempt, error) => {
+      log.error(`Failed to start libp2p (attempt ${attempt}/${MAX_RETRIES}): ${error.message}`);
+      // You could emit an event here that the UI can listen to for showing notifications
+      const event = new CustomEvent('libp2p:connection:retry', {
+        detail: { attempt, error: error.message }
+      });
+      window.dispatchEvent(event);
+    }
+  );
 
   libp2p.services.pubsub.subscribe(CHAT_TOPIC)
   libp2p.services.pubsub.subscribe(CHAT_FILE_TOPIC)
@@ -139,17 +181,27 @@ export async function msgIdFnStrictNoSign(msg: Message): Promise<Uint8Array> {
 
 // Function which dials one maddr at a time to avoid establishing multiple connections to the same peer
 async function dialWebRTCMaddrs(libp2p: Libp2p, multiaddrs: Multiaddr[]): Promise<void> {
-  // Filter webrtc (browser-to-browser) multiaddrs
   const webRTCMadrs = multiaddrs.filter((maddr) => maddr.protoNames().includes('webrtc'))
   log(`dialing WebRTC multiaddrs: %o`, webRTCMadrs)
 
   for (const addr of webRTCMadrs) {
     try {
       log(`attempting to dial webrtc multiaddr: %o`, addr)
-      await libp2p.dial(addr)
-      return // if we succeed dialing the peer, no need to try another address
+      await retryWithBackoff(
+        async () => await libp2p.dial(addr),
+        MAX_RETRIES,
+        INITIAL_BACKOFF_MS,
+        (attempt, error) => {
+          log.error(`Failed to dial webrtc multiaddr (attempt ${attempt}/${MAX_RETRIES}): ${error.message}`);
+          const event = new CustomEvent('libp2p:dial:retry', {
+            detail: { attempt, error: error.message, addr: addr.toString() }
+          });
+          window.dispatchEvent(event);
+        }
+      );
+      return;
     } catch (error: unknown) {
-      log.error(`failed to dial webrtc multiaddr: %o`, addr)
+      log.error(`failed to dial webrtc multiaddr after all retries: %o`, addr);
     }
   }
 }

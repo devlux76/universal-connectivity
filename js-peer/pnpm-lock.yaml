@@ -35,6 +35,9 @@ importers:
       '@libp2p/circuit-relay-v2':
         specifier: ^3.1.12
         version: 3.1.12
+      '@libp2p/crypto':
+        specifier: '*'
+        version: 5.0.11
       '@libp2p/identify':
         specifier: ^3.0.18
         version: 3.0.18

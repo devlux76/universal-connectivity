@@ -6,6 +6,7 @@ import type { Identify } from '@libp2p/identify'
 import type { DirectMessage } from '@/lib/direct-message'
 import type { DelegatedRoutingV1HttpApiClient } from '@helia/delegated-routing-v1-http-api-client'
 import { Booting } from '@/components/booting'
+import { ConnectionAlert } from '@/components/connection-alert'
 
 export type Libp2pType = Libp2p<{
   pubsub: PubSub
@@ -53,11 +54,17 @@ export function AppWrapper({ children }: WrapperProps) {
   }, [])
 
   if (!libp2p) {
-    return <Booting error={error} />
+    return (
+      <>
+        <ConnectionAlert />
+        <Booting error={error} />
+      </>
+    )
   }
 
   return (
     <libp2pContext.Provider value={{ libp2p }}>
+      <ConnectionAlert />
       <ChatProvider>{children}</ChatProvider>
     </libp2pContext.Provider>
   )
