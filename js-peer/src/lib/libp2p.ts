@@ -52,6 +52,11 @@ export function useAutoSubscribeToNewTopics() {
   const { libp2p } = useLibp2pContext()
 
   useEffect(() => {
+    // Don't run the effect until libp2p is initialized
+    if (!libp2p?.services?.pubsub) {
+      return;
+    }
+
     const knownTopics = loadTopicsFromStorage()
     for (const t of libp2p.services.pubsub.getTopics()) {
       knownTopics.add(t)
@@ -69,9 +74,14 @@ export function useAutoSubscribeToNewTopics() {
 
     libp2p.services.pubsub.addEventListener('subscription-change', onSubscriptionChange)
 
+    // Re-subscribe to stored topics
     knownTopics.forEach((t) => {
       if (!libp2p.services.pubsub.getTopics().includes(t)) {
-        libp2p.services.pubsub.subscribe(t)
+        try {
+          libp2p.services.pubsub.subscribe(t)
+        } catch (err) {
+          console.error(`Failed to resubscribe to topic ${t}:`, err)
+        }
       }
     })
 
@@ -80,7 +90,9 @@ export function useAutoSubscribeToNewTopics() {
     return () => {
       libp2p.services.pubsub.removeEventListener('subscription-change', onSubscriptionChange)
     }
-  }, [libp2p])
+  }, [libp2p?.services?.pubsub]) // Only re-run when pubsub service changes
+
+  return null
 }
 
 async function retryWithBackoff<T>(
