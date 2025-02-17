@@ -1,5 +1,5 @@
 import { useLibp2pContext } from '@/context/ctx'
-import { CHAT_TOPIC } from '@/lib/constants'
+import { TOPICS } from '@/lib/constants'
 import React, { useEffect, useState } from 'react'
 import type { PeerId } from '@libp2p/interface'
 import { PeerWrapper } from './peer'
@@ -10,7 +10,7 @@ export function ChatPeerList() {
 
   useEffect(() => {
     const onSubscriptionChange = () => {
-      const subscribers = libp2p.services.pubsub.getSubscribers(CHAT_TOPIC) as PeerId[]
+      const subscribers = libp2p.services.pubsub.getSubscribers(TOPICS.CHAT) as PeerId[]
       setSubscribers(subscribers)
     }
     onSubscriptionChange()

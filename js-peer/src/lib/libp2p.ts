@@ -18,7 +18,7 @@ import { webRTC, webRTCDirect } from '@libp2p/webrtc'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 import { ping } from '@libp2p/ping'
-import { BOOTSTRAP_PEER_IDS, CHAT_FILE_TOPIC, CHAT_TOPIC, PUBSUB_PEER_DISCOVERY } from './constants'
+import { TOPICS, BOOTSTRAP_PEER_IDS } from './constants'
 import first from 'it-first'
 import { forComponent, enable } from './logger'
 import { directMessage } from './direct-message'
@@ -99,7 +99,7 @@ export async function startLibp2p(): Promise<Libp2pType> {
       peerDiscovery: [
         pubsubPeerDiscovery({
           interval: 10_000,
-          topics: [PUBSUB_PEER_DISCOVERY],
+          topics: [TOPICS.PEER_DISCOVERY],
           listenOnly: false,
         }),
         bootstrap({
@@ -145,8 +145,8 @@ export async function startLibp2p(): Promise<Libp2pType> {
     }
   );
 
-  libp2p.services.pubsub.subscribe(CHAT_TOPIC)
-  libp2p.services.pubsub.subscribe(CHAT_FILE_TOPIC)
+  libp2p.services.pubsub.subscribe(TOPICS.CHAT);
+  libp2p.services.pubsub.subscribe(TOPICS.FILE);
 
   libp2p.addEventListener('self:peer:update', ({ detail: { peer } }) => {
     const multiaddrs = peer.addresses.map(({ multiaddr }) => multiaddr)

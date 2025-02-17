@@ -2,11 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLibp2pContext } from './ctx'
 import type { Message } from '@libp2p/interface'
 import {
-  CHAT_FILE_TOPIC,
-  CHAT_TOPIC,
+  TOPICS,
   FILE_EXCHANGE_PROTOCOL,
   MIME_TEXT_PLAIN,
-  PUBSUB_PEER_DISCOVERY,
 } from '@/lib/constants'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
@@ -74,19 +72,17 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const { libp2p } = useLibp2pContext()
 
   const messageCB = (evt: CustomEvent<Message>) => {
-    // FIXME: Why does 'from' not exist on type 'Message'?
     const { topic, data } = evt.detail
-
     switch (topic) {
-      case CHAT_TOPIC: {
+      case TOPICS.CHAT: {
         chatMessageCB(evt, topic, data)
         break
       }
-      case CHAT_FILE_TOPIC: {
+      case TOPICS.FILE: {
         chatFileMessageCB(evt, topic, data)
         break
       }
-      case PUBSUB_PEER_DISCOVERY: {
+      case TOPICS.PEER_DISCOVERY: {
         break
       }
       default: {
