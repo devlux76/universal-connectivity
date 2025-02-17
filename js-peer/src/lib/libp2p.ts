@@ -18,7 +18,7 @@ import { webRTC, webRTCDirect } from '@libp2p/webrtc'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 import { ping } from '@libp2p/ping'
-import { TOPICS, BOOTSTRAP_PEER_IDS } from './constants'
+import { TOPICS, BOOTSTRAP_PEER_IDS, loadUserTopics } from './constants'
 import first from 'it-first'
 import { forComponent, enable } from './logger'
 import { directMessage } from './direct-message'
@@ -99,7 +99,7 @@ export async function startLibp2p(): Promise<Libp2pType> {
       peerDiscovery: [
         pubsubPeerDiscovery({
           interval: 10_000,
-          topics: [TOPICS.PEER_DISCOVERY],
+          topics: [...TOPICS.PEER_DISCOVERY],
           listenOnly: false,
         }),
         bootstrap({
@@ -145,8 +145,26 @@ export async function startLibp2p(): Promise<Libp2pType> {
     }
   );
 
-  libp2p.services.pubsub.subscribe(TOPICS.CHAT);
-  libp2p.services.pubsub.subscribe(TOPICS.FILE);
+  const userTopics = loadUserTopics();
+  const allTopics = {
+    CHAT: [...TOPICS.CHAT, ...(userTopics.CHAT || [])],
+    FILE: [...TOPICS.FILE, ...(userTopics.FILE || [])],
+    PEER_DISCOVERY: [...TOPICS.PEER_DISCOVERY, ...(userTopics.PEER_DISCOVERY || [])],
+    STREAMING: [...TOPICS.STREAMING, ...(userTopics.STREAMING || [])]
+  };
+
+  for (const topic of allTopics.CHAT) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
+  for (const topic of allTopics.FILE) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
+  for (const topic of allTopics.PEER_DISCOVERY) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
+  for (const topic of allTopics.STREAMING) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
 
   libp2p.addEventListener('self:peer:update', ({ detail: { peer } }) => {
     const multiaddrs = peer.addresses.map(({ multiaddr }) => multiaddr)

@@ -1,8 +1,18 @@
 export const TOPICS = {
-  CHAT: 'universal-connectivity',
-  FILE: 'universal-connectivity-file',
-  PEER_DISCOVERY: 'universal-connectivity-browser-peer-discovery'
+  CHAT: ['universal-connectivity'],
+  FILE: ['universal-connectivity-file'],
+  PEER_DISCOVERY: ['universal-connectivity-browser-peer-discovery'],
+  STREAMING: ['universal-connectivity-streams']
 } as const;
+
+export function loadUserTopics(): Record<string, string[]> {
+  const userTopics = localStorage.getItem('user-topics');
+  return userTopics ? JSON.parse(userTopics) : {};
+}
+
+export function saveUserTopics(topics: Record<string, string[]>): void {
+  localStorage.setItem('user-topics', JSON.stringify(topics));
+}
 
 export const FILE_EXCHANGE_PROTOCOL = '/universal-connectivity-file/1'
 export const DIRECT_MESSAGE_PROTOCOL = '/universal-connectivity/dm/1.0.0'
