@@ -52,8 +52,37 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 ## Stage 3: Component Library [SKIP - Pending React 19 Migration]
 ...
 
-## Stage 4: Pages & Routing [SKIP - Pending React 19 Migration]
-...
+## Stage 4: Pages & Routing
+### Pages Refactoring
+- [ ] Refactor `src/pages/index.tsx` (currently 5.5KB):
+  ```
+  src/pages/
+    ├── index/
+      ├── index.tsx           # Main page component
+      ├── components/         # Page-specific components
+        ├── PeerInfo.tsx      # PeerID and addresses display
+        ├── ConnectForm.tsx   # Multiaddr connection form
+        └── ConnectionList.tsx # Active connections display
+      ├── hooks/
+        ├── useConnections.ts # Connection management
+        └── useAddresses.ts   # Listen addresses management
+  ```
+  - [ ] Extract peer info display logic
+  - [ ] Create dedicated connection form component
+  - [ ] Move connection list to separate component
+  - [ ] Extract connection management hooks
+  - [ ] Extract address management hooks
+  - [ ] Implement proper error handling
+
+- [x] Review `src/pages/chat.tsx`:
+  - [x] Already well-structured at 24 lines
+  - [x] Uses proper component composition
+  - [x] No immediate refactoring needed
+
+- [x] Review app configuration:
+  - [x] `_app.tsx` is minimal (15 lines)
+  - [x] `_document.tsx` is minimal (11 lines)
+  - [x] No refactoring needed
 
 ## Stage 5: Testing & Documentation
 - [ ] Set up testing infrastructure:
@@ -115,7 +144,16 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
   - [x] useUnreadManagement
 - [x] Migrated to immer for immutable state updates
 - [x] Updated main context provider to use new structure
-- [ ] Next: Testing infrastructure setup
+- [x] Next: Testing infrastructure setup
+
+### 2025-02-18 - Pages Assessment
+- [x] Analyzed current pages structure
+- [x] Identified index.tsx as main refactoring target (5.5KB)
+- [x] Confirmed chat.tsx is well-structured
+- [x] Verified app configuration files are minimal
+- [ ] Next: Begin index.tsx refactoring
+
+Note: Testing infrastructure work is postponed until after pages refactoring
 
 ### Memory Log
 - Direct Message System Refactor (Complete)
