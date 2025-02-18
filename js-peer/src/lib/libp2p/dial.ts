@@ -1,4 +1,4 @@
-import type { Libp2p, Connection } from '@libp2p/interface';
+import type { Libp2p } from '@libp2p/interface';
 import { Multiaddr } from '@multiformats/multiaddr';
 import { forComponent } from '../logger';
 

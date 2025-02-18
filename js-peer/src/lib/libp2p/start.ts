@@ -18,8 +18,8 @@ import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
 import { forComponent, enable } from '../logger';
 import { directMessage } from '../direct-message';
 import { TOPICS, BOOTSTRAP_PEER_IDS, loadUserTopics } from '../constants';
-import { retryWithBackoff, dialWebRTCMaddrs, MAX_RETRIES, INITIAL_BACKOFF_MS } from './dial.js';
-import type { Libp2pType } from './types.js';
+import { retryWithBackoff, dialWebRTCMaddrs, MAX_RETRIES, INITIAL_BACKOFF_MS } from './dial';
+import type { Libp2pType } from './types';
 import first from 'it-first';
 import { msgIdFnStrictNoSign } from './utils';
 
