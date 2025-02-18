@@ -32,11 +32,11 @@ const log = forComponent('libp2p')
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 1000;
 
-const STORAGE_KEY = 'subscribedTopics'
+const TOPICS_STORAGE_KEY = 'subscribedTopics'
 
 export function loadTopicsFromStorage(): Set<string> {
   try {
-    const data = localStorage.getItem(STORAGE_KEY)
+    const data = localStorage.getItem(TOPICS_STORAGE_KEY)
     if (!data) return new Set()
     return new Set(JSON.parse(data))
   } catch {
@@ -45,7 +45,7 @@ export function loadTopicsFromStorage(): Set<string> {
 }
 
 export function storeTopicsInStorage(topics: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(topics)))
+  localStorage.setItem(TOPICS_STORAGE_KEY, JSON.stringify(Array.from(topics)))
 }
 
 export function useAutoSubscribeToNewTopics() {
@@ -115,6 +115,26 @@ async function retryWithBackoff<T>(
   }
 }
 
+const LIBP2P_STORAGE_KEY = 'libp2p-key';
+
+export function loadLibp2pKey(): Uint8Array | null {
+  try {
+    const storedKey = localStorage.getItem(LIBP2P_STORAGE_KEY);
+    return storedKey ? new Uint8Array(JSON.parse(storedKey)) : null;
+  } catch (error) {
+    console.error('Failed to load libp2p key from localStorage:', error);
+    return null;
+  }
+}
+
+export function saveLibp2pKey(privateKey: Uint8Array): void {
+  try {
+    localStorage.setItem(LIBP2P_STORAGE_KEY, JSON.stringify(Array.from(privateKey)));
+  } catch (error) {
+    console.error('Failed to save libp2p key to localStorage:', error);
+  }
+}
+
 export async function startLibp2p(): Promise<Libp2pType> {
   // enable verbose logging in browser console to view debug logs
   enable('ui*,libp2p*,-libp2p:connection-manager*,-*:trace')
@@ -126,12 +146,12 @@ export async function startLibp2p(): Promise<Libp2pType> {
 
   let privateKey;
   try {
-    const storedKey = localStorage.getItem('libp2p-key');
-    privateKey = storedKey ? privateKeyFromProtobuf(Uint8Array.from(JSON.parse(storedKey))) : await generateKeyPair('Ed25519');
-    if (!storedKey) localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
+    const storedKey = loadLibp2pKey();
+    privateKey = storedKey ? privateKeyFromProtobuf(storedKey) : await generateKeyPair('Ed25519');
+    if (!storedKey) saveLibp2pKey(privateKeyToProtobuf(privateKey));
   } catch {
     privateKey = await generateKeyPair('Ed25519');
-    localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
+    saveLibp2pKey(privateKeyToProtobuf(privateKey));
   }
 
   const createNode = async () => {

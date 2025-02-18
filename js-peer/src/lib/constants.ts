@@ -47,12 +47,34 @@ export const TOPICS = {
 } as const;
 
 export function loadUserTopics(): Record<string, string[]> {
-  const userTopics = localStorage.getItem('user-topics');
-  return userTopics ? JSON.parse(userTopics) : {};
+  try {
+    const userTopics = localStorage.getItem('user-topics');
+    if (!userTopics) return {};
+
+    const topics = JSON.parse(userTopics);
+    const validTopics: Record<string, string[]> = {};
+
+    for (const [key, value] of Object.entries(topics)) {
+      if (Array.isArray(value) && value.every(topic => typeof topic === 'string' && topic.trim() !== '')) {
+        validTopics[key] = value;
+      } else {
+        console.warn(`Corrupted topic found and removed: ${key}`);
+      }
+    }
+
+    return validTopics;
+  } catch (error) {
+    console.error('Failed to load user topics from localStorage:', error);
+    return {};
+  }
 }
 
 export function saveUserTopics(topics: Record<string, string[]>): void {
-  localStorage.setItem('user-topics', JSON.stringify(topics));
+  try {
+    localStorage.setItem('user-topics', JSON.stringify(topics));
+  } catch (error) {
+    console.error('Failed to save user topics to localStorage:', error);
+  }
 }
 
 export const FILE_EXCHANGE_PROTOCOL = '/universal-connectivity-file/1'
