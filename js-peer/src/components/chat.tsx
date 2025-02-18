@@ -17,28 +17,31 @@ const PUBLIC_CHAT_ROOM_NAME = 'The Lobby'
 
 export default function ChatContainer() {
   const { libp2p } = useLibp2pContext()
-  const { roomId, setRoomId, setRoomType, roomType, setRoomUnreads } = useChatContext()
-  const { messageHistory, setMessageHistory, directMessages, setDirectMessages, files, setFiles } = useChatContext()
+  const { rooms, setRooms, activeRoomId, setActiveRoomId, directMessages, setDirectMessages, files, setFiles } = useChatContext()
   const [input, setInput] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const currentRoom = rooms[activeRoomId] || { messages: [], unread: 0, joined: true }
 
   // Clear unread count when entering a room
   useEffect(() => {
-    if (roomType === 'public') {
-      setRoomUnreads(prev => ({ ...prev, [TOPICS.CHAT[0]]: 0 }))
-    } else if (roomType === 'topic' && roomId) {
-      setRoomUnreads(prev => ({ ...prev, [roomId]: 0 }))
+    if (activeRoomId) {
+      setRooms(prev => ({
+        ...prev,
+        [activeRoomId]: {
+          ...prev[activeRoomId],
+          unread: 0
+        }
+      }))
     }
-  }, [roomId, roomType, setRoomUnreads])
+  }, [activeRoomId, setRooms])
 
-  // Send message to public chat over gossipsub
-  const sendPublicMessage = useCallback(async () => {
+  // Send message to room over gossipsub
+  const sendRoomMessage = useCallback(async () => {
     if (input === '') return
 
-    const chatTopic = TOPICS.CHAT[0] // Use the first chat topic as the default
-    const subscribers = libp2p.services.pubsub.getSubscribers(chatTopic)
-    log(`peers in gossip for topic ${chatTopic}:`, subscribers.toString())
+    const roomTopic = getRoomTopic(activeRoomId)
+    const subscribers = libp2p.services.pubsub.getSubscribers(roomTopic)
+    log(`peers in gossip for topic ${roomTopic}:`, subscribers.toString())
 
     const res = await libp2p.services.pubsub.publish(chatTopic, new TextEncoder().encode(input))
     log(

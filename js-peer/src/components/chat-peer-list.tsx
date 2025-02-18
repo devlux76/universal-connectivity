@@ -12,7 +12,7 @@ const log = forComponent('chat-peer-list')
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { roomId, setRoomId, setRoomType } = useChatContext()
+  const { rooms, setRooms, activeRoomId, setActiveRoomId } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
@@ -35,6 +35,42 @@ export function ChatPeerList() {
     setError('');
     const validationError = validateTopicName(newTopic);
     if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const roomId = sanitizeTopicName(newTopic);
+      const roomTopic = getRoomTopic(roomId);
+      
+      // Subscribe to the new room's topic
+      await libp2p.services.pubsub.subscribe(roomTopic);
+      
+      // Add the new room to state
+      setRooms(prev => ({
+        ...prev,
+        [roomId]: {
+          messages: [],
+          unread: 0,
+          joined: true
+        }
+      }));
+      
+      // Switch to the new room
+      setActiveRoomId(roomId);
+      
+      // Save the topic
+      const updatedTopics = [...topics, roomId];
+      setTopics(updatedTopics);
+      saveTopicsToStorage(updatedTopics);
+      
+      setNewTopic('');
+    } catch (err) {
+      setError('Failed to create room: ' + err.message);
+    } finally {
+      setIsCreating(false);
+    }
       setError(validationError);
       return;
     }

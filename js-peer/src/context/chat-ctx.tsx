@@ -45,18 +45,14 @@ export interface RoomUnreads {
 }
 
 export interface ChatContextInterface {
-  messageHistory: ChatMessage[]
-  setMessageHistory: (messageHistory: ChatMessage[] | ((prevMessages: ChatMessage[]) => ChatMessage[])) => void
+  rooms: Record<string, RoomState>
+  setRooms: (rooms: Record<string, RoomState> | ((prev: Record<string, RoomState>) => Record<string, RoomState>)) => void
+  activeRoomId: string
+  setActiveRoomId: (roomId: string) => void
   directMessages: DirectMessages
   setDirectMessages: (directMessages: DirectMessages | ((prevMessages: DirectMessages) => DirectMessages)) => void
-  roomId: Chatroom
-  setRoomId: (chatRoom: Chatroom) => void
-  roomType: RoomType
-  setRoomType: (type: RoomType) => void
   files: Map<string, ChatFile>
   setFiles: (files: Map<string, ChatFile>) => void
-  roomUnreads: RoomUnreads
-  setRoomUnreads: (unreads: RoomUnreads | ((prev: RoomUnreads) => RoomUnreads)) => void
 }
 
 export const chatContext = createContext<ChatContextInterface>({
@@ -78,13 +74,19 @@ export const useChatContext = () => {
   return useContext(chatContext)
 }
 
+interface RoomState {
+  messages: ChatMessage[];
+  unread: number;
+  joined: boolean;
+}
+
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
-  const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([])
+  const [rooms, setRooms] = useState<Record<string, RoomState>>({ 
+    lobby: { messages: [], unread: 0, joined: true } 
+  })
   const [directMessages, setDirectMessages] = useState<DirectMessages>({})
   const [files, setFiles] = useState<Map<string, ChatFile>>(new Map<string, ChatFile>())
-  const [roomId, setRoomId] = useState<Chatroom>('')
-  const [roomType, setRoomType] = useState<RoomType>('public')
-  const [roomUnreads, setRoomUnreads] = useState<RoomUnreads>({})
+  const [activeRoomId, setActiveRoomId] = useState<string>('lobby')
 
   const { libp2p } = useLibp2pContext()
 
@@ -121,15 +123,17 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         roomId: topic
       }
 
-      // Add to messageHistory and update unread count if not in the current room
-      if (topic === TOPICS.CHAT[0] || topic === roomId) {
-        setMessageHistory([...messageHistory, newMessage])
-      }
-      
-      if (topic !== roomId) {
-        setRoomUnreads(prev => ({
-          ...prev,
-          [topic]: (prev[topic] || 0) + 1
+      // Determine which room this message belongs to
+      const roomId = topic === TOPICS.ROOMS.LOBBY ? 'lobby' : 
+        topic.startsWith(TOPICS.ROOMS.PREFIX) ? topic.slice(TOPICS.ROOMS.PREFIX.length) : topic;
+
+      // Add message to room and update unread count if not in the active room
+      setRooms(prev => ({
+        ...prev,
+        [roomId]: {
+          ...prev[roomId] || { messages: [], unread: 0, joined: true },
+          messages: [...(prev[roomId]?.messages || []), newMessage],
+          unread: roomId !== activeRoomId ? (prev[roomId]?.unread || 0) + 1 : 0
         }))
       }
     }

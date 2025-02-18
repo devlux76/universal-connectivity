@@ -40,11 +40,19 @@ export function formatTopicNameForDisplay(name: string): string {
 }
 
 export const TOPICS = {
-  CHAT: ['universal-connectivity'],
+  ROOMS: {
+    LOBBY: 'universal-connectivity', // The default room, for backward compatibility
+    PREFIX: 'universal-connectivity-room/', // Prefix for all other rooms
+  },
   FILE: ['universal-connectivity-file'],
   PEER_DISCOVERY: ['universal-connectivity-browser-peer-discovery'],
   STREAMING: ['universal-connectivity-streams']
 } as const;
+
+// Helper to get room topic
+export const getRoomTopic = (roomId: string) => {
+  return roomId === 'lobby' ? TOPICS.ROOMS.LOBBY : `${TOPICS.ROOMS.PREFIX}${roomId}`;
+};
 
 export function loadUserTopics(): Record<string, string[]> {
   try {
