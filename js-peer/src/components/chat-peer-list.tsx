@@ -71,7 +71,11 @@ export function ChatPeerList() {
       try {
         const topic = new TextDecoder().decode(evt.detail.data)
         if (!isValidTopic(topic)) {
-          console.warn(`Ignoring invalid topic: ${topic}`)
+          console.warn(`Ignoring invalid topic request...`)
+          // Send acknowledgment for invalid topic
+          const invalidTopicAck = new TextEncoder().encode(`Invalid topic: ${topic}`)
+          await libp2p.services.pubsub.publish(topic, invalidTopicAck)
+
           return
         }
         const currentTopics = new Set(topics)

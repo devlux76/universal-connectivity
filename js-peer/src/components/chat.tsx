@@ -57,14 +57,15 @@ export default function ChatContainer() {
   // Send direct message over custom protocol
   const sendDirectMessage = useCallback(async () => {
     try {
-      const res = await libp2p.services.directMessage.send(peerIdFromString(roomId), input)
+      const peerId = peerIdFromString(roomId);
+      const res = await libp2p.services.directMessage.send(peerId, input);
 
       if (!res) {
-        log('Failed to send message')
-        return
+        log('Failed to send message');
+        return;
       }
 
-      const myPeerId = libp2p.peerId.toString()
+      const myPeerId = libp2p.peerId.toString();
 
       const newMessage: ChatMessage = {
         msgId: crypto.randomUUID(),
@@ -73,20 +74,48 @@ export default function ChatContainer() {
         peerId: myPeerId,
         read: true,
         receivedAt: Date.now(),
-      }
+      };
 
-      const updatedMessages = directMessages[roomId] ? [...directMessages[roomId], newMessage] : [newMessage]
+      const updatedMessages = directMessages[roomId] ? [...directMessages[roomId], newMessage] : [newMessage];
 
       setDirectMessages({
         ...directMessages,
         [roomId]: updatedMessages,
-      })
+      });
 
-      setInput('')
+      setInput('');
     } catch (e: unknown) {
-      log(e)
+      log(e);
     }
-  }, [libp2p, setDirectMessages, directMessages, roomId, input])
+  }, [libp2p, setDirectMessages, directMessages, roomId, input]);
+
+  const sendTopicMessage = useCallback(async () => {
+    try {
+      const res = await libp2p.services.pubsub.publish(roomId, new TextEncoder().encode(input));
+
+      if (!res) {
+        log('Failed to send message');
+        return;
+      }
+
+      const myPeerId = libp2p.peerId.toString();
+
+      const newMessage: ChatMessage = {
+        msgId: crypto.randomUUID(),
+        msg: input,
+        fileObjectUrl: undefined,
+        peerId: myPeerId,
+        read: true,
+        receivedAt: Date.now(),
+      };
+
+      setMessageHistory([...messageHistory, newMessage]);
+
+      setInput('');
+    } catch (e: unknown) {
+      log(e);
+    }
+  }, [libp2p, setMessageHistory, messageHistory, roomId, input]);
 
   const sendFile = useCallback(
     async (readerEvent: ProgressEvent<FileReader>) => {
@@ -133,23 +162,27 @@ export default function ChatContainer() {
         return
       }
       if (roomId === PUBLIC_CHAT_ROOM_ID) {
-        sendPublicMessage()
+        sendPublicMessage();
+      } else if (libp2p.services.directMessage.isDMPeer(peerIdFromString(roomId))) {
+        sendDirectMessage();
       } else {
-        sendDirectMessage()
+        sendTopicMessage();
       }
     },
-    [sendPublicMessage, sendDirectMessage, roomId],
+    [sendPublicMessage, sendDirectMessage, sendTopicMessage, roomId, libp2p],
   )
 
   const handleSend = useCallback(
     async (_e: React.MouseEvent<HTMLButtonElement>) => {
       if (roomId === PUBLIC_CHAT_ROOM_ID) {
-        sendPublicMessage()
+        sendPublicMessage();
+      } else if (libp2p.services.directMessage.isDMPeer(peerIdFromString(roomId))) {
+        sendDirectMessage();
       } else {
-        sendDirectMessage()
+        sendTopicMessage();
       }
     },
-    [sendPublicMessage, sendDirectMessage, roomId],
+    [sendPublicMessage, sendDirectMessage, sendTopicMessage, roomId, libp2p]
   )
 
   const handleInput = useCallback(
