@@ -1,6 +1,6 @@
 import { useLibp2pContext } from '@/context/ctx'
 import { useChatContext } from '@/context/chat-ctx'
-import { TOPICS, sanitizeTopicName, formatTopicNameForDisplay } from '@/lib/constants'
+import { TOPICS, sanitizeTopicName, formatTopicNameForDisplay, getRoomTopic } from '@/lib/constants'
 import React, { useEffect, useState } from 'react'
 import type { PeerId } from '@libp2p/interface'
 import { PeerWrapper } from './peer'
@@ -10,9 +10,11 @@ import { forComponent } from '@/lib/logger'
 
 const log = forComponent('chat-peer-list')
 
+type RoomUnreads = { [roomId: string]: number }
+
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { _rooms, setRooms, _activeRoomId, setActiveRoomId } = useChatContext()
+  const { rooms, setRooms, activeRoomId, setActiveRoomId, roomUnreads, setRoomUnreads } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
@@ -86,12 +88,14 @@ export function ChatPeerList() {
     if (!libp2p?.services?.pubsub) return
 
     const onSubscriptionChange = () => {
-      // Get subscribers from all chat topics and deduplicate them
-      const allSubscribers = TOPICS.CHAT.flatMap(topic => 
-        libp2p.services.pubsub.getSubscribers(topic) as PeerId[]
-      )
-      const uniqueSubscribers = [...new Set(allSubscribers.map(p => p.toString()))]
-        .map(str => allSubscribers.find(p => p.toString() === str)!)
+      // Get subscribers from all chat topics 
+      const subscribers = libp2p.services.pubsub
+        .getTopics()
+        .filter(topic => topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX))
+        .flatMap(topic => libp2p.services.pubsub.getSubscribers(topic))
+
+      const uniqueSubscribers = [...new Set(subscribers.map(p => p.toString()))]
+        .map(str => subscribers.find(p => p.toString() === str)!)
       setSubscribers(uniqueSubscribers)
     }
 
@@ -132,45 +136,40 @@ export function ChatPeerList() {
     }
   }, [libp2p, topics])
 
-  const { roomUnreads, setRoomUnreads } = useChatContext();
-
-  const handleRoomSelect = (topic: string) => {
-    setRoomId(topic);
-    setRoomType('topic');
+  const handleRoomSelect = (roomId: string) => {
+    setActiveRoomId(roomId);
     // Clear unread count when selecting a room
-    setRoomUnreads(prev => ({ ...prev, [topic]: 0 }));
+    setRoomUnreads((prev: RoomUnreads) => ({ ...prev, [roomId]: 0 }));
   };
 
   return (
     <div className="border-l border-gray-300 lg:col-span-1 bg-gray-800 text-white h-full">
       <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {/* Public Room */}
+          {/* Rooms Section */}
           <div className="px-3 py-2 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-gray-300">Rooms</h2>
             <div className="mt-2 space-y-2">
+              {/* Lobby Room */}
               <button
-                onClick={() => {
-                  setRoomId('');
-                  setRoomType('public');
-                  setRoomUnreads(prev => ({ ...prev, [TOPICS.CHAT[0]]: 0 }));
-                }}
-                className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${roomId === '' ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
+                onClick={() => handleRoomSelect('lobby')}
+                className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${activeRoomId === 'lobby' ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
               >
-                <span className={`flex-1 truncate text-left ${roomId === '' ? 'font-medium' : ''}`}>
+                <span className={`flex-1 truncate text-left ${activeRoomId === 'lobby' ? 'font-medium' : ''}`}>
                   # The Lobby
                 </span>
-                {roomUnreads[TOPICS.CHAT[0]] > 0 && (
+                {roomUnreads['lobby'] > 0 && (
                   <span className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-full">
-                    {roomUnreads[TOPICS.CHAT[0]]}
+                    {roomUnreads['lobby']}
                   </span>
                 )}
               </button>
 
               {/* Topic Rooms */}
               {topics.map((topic) => {
-                const isActive = roomId === topic;
-                const peerCount = subscribers.filter((sub) => sub.toString() === topic).length;
+                const isActive = activeRoomId === topic;
+                const roomTopic = getRoomTopic(topic);
+                const peerCount = libp2p.services.pubsub.getSubscribers(roomTopic).length;
                 const unreadCount = roomUnreads[topic] || 0;
                 
                 return (

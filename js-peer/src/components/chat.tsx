@@ -1,6 +1,6 @@
 import { useLibp2pContext } from '@/context/ctx'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { TOPICS } from '@/lib/constants'
+import { TOPICS, getRoomTopic } from '@/lib/constants'
 import { ChatFile, ChatMessage, useChatContext } from '../context/chat-ctx'
 import { v4 as uuidv4 } from 'uuid'
 import { Message } from './message'
@@ -12,12 +12,16 @@ import { peerIdFromString } from '@libp2p/peer-id'
 
 const log = forComponent('chat')
 
-export const PUBLIC_CHAT_ROOM_ID = ''
-const PUBLIC_CHAT_ROOM_NAME = 'The Lobby'
+const LOBBY_NAME = 'The Lobby'
 
 export default function ChatContainer() {
   const { libp2p } = useLibp2pContext()
-  const { rooms, setRooms, activeRoomId, directMessages, setDirectMessages, files, setFiles } = useChatContext()
+  const { 
+    rooms, setRooms, 
+    activeRoomId, setActiveRoomId,
+    directMessages, setDirectMessages, 
+    files, setFiles 
+  } = useChatContext()
   const [input, setInput] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
   const _currentRoom = rooms[activeRoomId] || { messages: [], unread: 0, joined: true }
@@ -35,122 +39,61 @@ export default function ChatContainer() {
     }
   }, [activeRoomId, setRooms])
 
-  // Send message to room over gossipsub
-  const _sendRoomMessage = useCallback(async () => {
+  const sendMessage = useCallback(async () => {
     if (input === '') return
 
-    const subscribers = libp2p.services.pubsub.getSubscribers(activeRoomId)
-    log(`peers in gossip for topic ${activeRoomId}:`, subscribers.toString())
-
-    const res = await libp2p.services.pubsub.publish(activeRoomId, new TextEncoder().encode(input))
-    log(
-      'sent message to: ',
-      res.recipients.map((peerId) => peerId.toString()),
-    )
-
-    const myPeerId = libp2p.peerId.toString()
-
-    setRooms(prev => ({
-      ...prev,
-      [activeRoomId]: {
-        ...prev[activeRoomId],
-        messages: [
-          ...(prev[activeRoomId]?.messages || []),
-          {
-            msgId: crypto.randomUUID(),
-            msg: input,
-            fileObjectUrl: undefined,
-            peerId: myPeerId,
-            read: true,
-            receivedAt: Date.now(),
-            roomId: activeRoomId
-          }
-        ]
-      }
-    }))
-
-    setInput('')
-  }, [input, setInput, libp2p, activeRoomId, setRooms])
-
-  // Send direct message over custom protocol
-  const sendDirectMessage = useCallback(async () => {
     try {
-      const peerId = peerIdFromString(activeRoomId);
-      const res = await libp2p.services.directMessage.send(peerId, input);
-
-      if (!res) {
-        log('Failed to send message');
-        return;
-      }
-
-      const myPeerId = libp2p.peerId.toString();
-
-      const newMessage: ChatMessage = {
-        msgId: crypto.randomUUID(),
-        msg: input,
-        fileObjectUrl: undefined,
-        peerId: myPeerId,
-        read: true,
-        receivedAt: Date.now(),
-        roomId: activeRoomId
-      };
-
-      const updatedMessages = directMessages[activeRoomId] ? [...directMessages[activeRoomId], newMessage] : [newMessage];
-
-      setDirectMessages({
-        ...directMessages,
-        [activeRoomId]: updatedMessages,
-      });
-
-      setInput('');
-    } catch (e: unknown) {
-      log(e);
-    }
-  }, [libp2p, activeRoomId, input, setInput, directMessages, setDirectMessages]);
-
-  const sendTopicMessage = useCallback(async () => {
-    try {
-      // First verify that we're subscribed to the topic
-      const subscribedTopics = libp2p.services.pubsub.getTopics();
-      if (!subscribedTopics.includes(activeRoomId)) {
-        log(`Not subscribed to topic ${activeRoomId}, subscribing now...`);
-        await libp2p.services.pubsub.subscribe(activeRoomId);
-      }
-
-      const subscribers = libp2p.services.pubsub.getSubscribers(activeRoomId);
-      log(`peers in gossip for topic ${activeRoomId}:`, subscribers.toString());
-
-      const res = await libp2p.services.pubsub.publish(activeRoomId, new TextEncoder().encode(input));
-
-      if (!res) {
-        log('Failed to send message');
-        return;
-      }
-
-      const myPeerId = libp2p.peerId.toString();
-
-      const newMessage: ChatMessage = {
-        msgId: crypto.randomUUID(),
-        msg: input,
-        fileObjectUrl: undefined,
-        peerId: myPeerId,
-        read: true,
-        receivedAt: Date.now(),
-        roomId: activeRoomId
-      };
-
-      setRooms(prev => ({
-        ...prev,
-        [activeRoomId]: {
-          ...prev[activeRoomId],
-          messages: [...(prev[activeRoomId]?.messages || []), newMessage]
+      if (activeRoomId.startsWith('peer:')) {
+        // Direct message path
+        const peerId = peerIdFromString(activeRoomId.slice(5));
+        const res = await libp2p.services.directMessage.send(peerId, input);
+        
+        if (!res) {
+          log('Failed to send message');
+          return;
         }
-      }));
+      } else {
+        // Topic/room path (including lobby)
+        const roomTopic = getRoomTopic(activeRoomId);
+        const subscribers = libp2p.services.pubsub.getSubscribers(roomTopic);
+        log(`peers in gossip for topic ${roomTopic}:`, subscribers.toString());
+
+        const res = await libp2p.services.pubsub.publish(roomTopic, new TextEncoder().encode(input));
+        log('sent message to: ', res.recipients.map((peerId) => peerId.toString()));
+      }
+
+      // Add message to appropriate state store
+      const myPeerId = libp2p.peerId.toString();
+      const newMessage: ChatMessage = {
+        msgId: crypto.randomUUID(),
+        msg: input,
+        fileObjectUrl: undefined,
+        peerId: myPeerId,
+        read: true,
+        receivedAt: Date.now(),
+        roomId: activeRoomId
+      };
+
+      if (activeRoomId.startsWith('peer:')) {
+        setDirectMessages(prev => ({
+          ...prev,
+          [activeRoomId]: [...(prev[activeRoomId] || []), newMessage]
+        }));
+      } else {
+        setRooms(prev => ({
+          ...prev,
+          [activeRoomId]: {
+            ...prev[activeRoomId],
+            messages: [...(prev[activeRoomId]?.messages || []), newMessage]
+          }
+        }));
+      }
+
       setInput('');
     } catch (e: unknown) {
       log(e);
     }
-  }, [libp2p, activeRoomId, input, setInput, setRooms]);
+  }, [input, activeRoomId, libp2p, setRooms, setDirectMessages, setInput]);
 
   const sendFile = useCallback(
     async (readerEvent: ProgressEvent<FileReader>) => {
@@ -200,33 +143,19 @@ export default function ChatContainer() {
 
   const handleKeyUp = useCallback(
     async (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== 'Enter') {
-        return
-      }
-
-      if (activeRoomId === 'lobby') {
-        _sendRoomMessage();
-      } else if (activeRoomId.startsWith('peer:')) {
-        sendDirectMessage();
-      } else {
-        sendTopicMessage();
+      if (e.key === 'Enter') {
+        sendMessage();
       }
     },
-    [_sendRoomMessage, sendDirectMessage, sendTopicMessage, activeRoomId]
-  )
+    [sendMessage]
+  );
 
   const handleSend = useCallback(
     async (_e: React.MouseEvent<HTMLButtonElement>) => {
-      if (activeRoomId === 'lobby') {
-        _sendRoomMessage();
-      } else if (activeRoomId.startsWith('peer:')) {
-        sendDirectMessage();
-      } else {
-        sendTopicMessage();
-      }
+      sendMessage();
     },
-    [_sendRoomMessage, sendDirectMessage, sendTopicMessage, activeRoomId]
-  )
+    [sendMessage]
+  );
 
   const handleInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,12 +166,13 @@ export default function ChatContainer() {
 
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files) {
-        const reader = new FileReader()
-        reader.readAsArrayBuffer(e.target.files[0])
-        reader.onload = (readerEvent) => {
-          sendFile(readerEvent)
-        }
+      if (!e.target.files?.length) return;
+      
+      const reader = new FileReader()
+      reader.readAsArrayBuffer(e.target.files[0])
+      reader.onload = (readerEvent) => {
+        if (!readerEvent.target?.result) return;
+        sendFile(readerEvent)
       }
     },
     [sendFile],
@@ -255,11 +185,9 @@ export default function ChatContainer() {
     [fileRef],
   )
 
-  const handleBackToPublic = useCallback(() => {
+  const handleBackToLobby = useCallback(() => {
     setActiveRoomId('lobby')
-  }, [])
-
-  // No need for this effect anymore since we're using room-based messages
+  }, [setActiveRoomId])
 
   return (
     <div className="container mx-auto">
@@ -268,13 +196,13 @@ export default function ChatContainer() {
           <div className="w-full">
             <div className="relative flex items-center p-3 border-b border-gray-300">
               {activeRoomId === 'lobby' && (
-                <span className="block ml-2 font-bold text-gray-600">{PUBLIC_CHAT_ROOM_NAME}</span>
+                <span className="block ml-2 font-bold text-gray-600">{LOBBY_NAME}</span>
               )}
               {activeRoomId.startsWith('peer:') && (
                 <>
                   <Blockies seed={activeRoomId} size={8} scale={3} className="rounded mr-2 max-h-10 max-w-10" />
                   <span className={`text-gray-500 flex`}>{activeRoomId.toString().slice(-7)}</span>
-                  <button onClick={handleBackToPublic} className="text-gray-500 flex ml-auto">
+                  <button onClick={handleBackToLobby} className="text-gray-500 flex ml-auto">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-500" />
                     <span>Back to The Lobby</span>
                   </button>
@@ -283,7 +211,7 @@ export default function ChatContainer() {
               {!activeRoomId.startsWith('peer:') && activeRoomId !== 'lobby' && (
                 <>
                   <span className="block ml-2 font-bold text-gray-600">#{activeRoomId}</span>
-                  <button onClick={handleBackToPublic} className="text-gray-500 flex ml-auto">
+                  <button onClick={handleBackToLobby} className="text-gray-500 flex ml-auto">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-500" />
                     <span>Back to The Lobby</span>
                   </button>
@@ -314,13 +242,13 @@ export default function ChatContainer() {
                 className="hidden"
                 type="file"
                 onChange={handleFileInput}
-                disabled={roomType !== 'public'}
+                disabled={activeRoomId.startsWith('peer:')}
               />
               <button
                 onClick={handleFileSend}
-                disabled={roomType !== 'public'}
-                title={roomType === 'public' ? 'Upload file' : "File uploads only allowed in public chat"}
-                className={roomType === 'public' ? '' : 'cursor-not-allowed'}
+                disabled={activeRoomId.startsWith('peer:')}
+                title={!activeRoomId.startsWith('peer:') ? 'Upload file' : "File uploads not allowed in direct messages"}
+                className={!activeRoomId.startsWith('peer:') ? '' : 'cursor-not-allowed'}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

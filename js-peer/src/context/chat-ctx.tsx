@@ -35,7 +35,8 @@ export interface DirectMessages {
   [peerId: string]: ChatMessage[]
 }
 
-export type RoomType = 'public' | 'topic' | 'dm'
+// Simplified - we only need to distinguish DMs from topic-based messages
+export type RoomType = 'dm' | 'topic'
 
 export interface RoomUnreads {
   [roomId: string]: number
@@ -46,10 +47,14 @@ export interface ChatContextInterface {
   setRooms: (rooms: Record<string, RoomState> | ((prev: Record<string, RoomState>) => Record<string, RoomState>)) => void
   activeRoomId: string
   setActiveRoomId: (roomId: string) => void
+  roomType: RoomType
+  setRoomType: (type: RoomType) => void
   directMessages: DirectMessages
   setDirectMessages: (directMessages: DirectMessages | ((prevMessages: DirectMessages) => DirectMessages)) => void
   files: Map<string, ChatFile>
   setFiles: (files: Map<string, ChatFile>) => void
+  roomUnreads: RoomUnreads
+  setRoomUnreads: (unread: RoomUnreads | ((prev: RoomUnreads) => RoomUnreads)) => void
 }
 
 export const chatContext = createContext<ChatContextInterface>({
@@ -57,10 +62,14 @@ export const chatContext = createContext<ChatContextInterface>({
   setRooms: () => {},
   activeRoomId: 'lobby',
   setActiveRoomId: () => {},
+  roomType: 'topic',
+  setRoomType: () => {},
   directMessages: {},
   setDirectMessages: () => {},
   files: new Map<string, ChatFile>(),
-  setFiles: () => {}
+  setFiles: () => {},
+  roomUnreads: {},
+  setRoomUnreads: () => {}
 })
 
 export const useChatContext = () => {
@@ -80,6 +89,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [directMessages, setDirectMessages] = useState<DirectMessages>({})
   const [files, setFiles] = useState<Map<string, ChatFile>>(new Map<string, ChatFile>())
   const [activeRoomId, setActiveRoomId] = useState<string>('lobby')
+  const [roomType, setRoomType] = useState<RoomType>('topic')
+  const [roomUnreads, setRoomUnreads] = useState<RoomUnreads>({})
 
   const { libp2p } = useLibp2pContext()
 
@@ -99,7 +110,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         roomId: topic
       }
 
-      // Determine which room this message belongs to
+      // Determine which room this message belongs to using standard topic handling
       const roomId = topic === TOPICS.ROOMS.LOBBY ? 'lobby' : 
         topic.startsWith(TOPICS.ROOMS.PREFIX) ? topic.slice(TOPICS.ROOMS.PREFIX.length) : topic;
 
@@ -115,50 +126,33 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [activeRoomId, setRooms])
 
-  const messageCB = useCallback((evt: CustomEvent<Message>) => {
-    const { topic, data } = evt.detail
-    
-    if (topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX)) {
-      chatMessageCB(evt, topic, data)
-    } else if (TOPICS.FILE.includes(topic)) {
-      chatFileMessageCB(evt, topic, data)
-    } else if (TOPICS.PEER_DISCOVERY.includes(topic)) {
-      // Do nothing for peer discovery topics
-    } else {
-      // Handle custom topic messages
-      chatMessageCB(evt, topic, data)
-    }
-  }, [chatMessageCB, chatFileMessageCB])
-    }
-  }
-
   const chatFileMessageCB = async (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
     const newChatFileMessage = (id: string, body: Uint8Array) => {
       return `File: ${id} (${body.length} bytes)`
     }
     const fileId = new TextDecoder().decode(data)
 
-    // if the message isn't signed, discard it.
     if (evt.detail.type !== 'signed') {
       return
     }
 
     try {
       const stream = await libp2p.dialProtocol(evt.detail.from, FILE_EXCHANGE_PROTOCOL)
-      const file = await pipe(
+      const chunks = await pipe(
         [fileId],
         (source) => map(source, (str) => uint8ArrayFromString(str)),
         stream,
         async (source) => {
-          const chunks = []
+          const chunks: Uint8Array[] = []
           for await (const chunk of source) {
-            chunks.push(chunk)
+            // Convert Uint8ArrayList to Uint8Array
+            chunks.push(new Uint8Array(chunk.subarray()))
           }
           return chunks
         },
       )
 
-      const body = file[0]
+      const body = chunks[0]
       const chatFile: ChatFile = {
         id: fileId,
         body,
@@ -190,6 +184,22 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  const messageCB = useCallback((evt: CustomEvent<Message>) => {
+    const { topic, data } = evt.detail
+    
+    // Using type guards to check topic membership
+    if (topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX)) {
+      chatMessageCB(evt, topic, data)
+    } else if (topic === TOPICS.FILE[0]) {
+      chatFileMessageCB(evt, topic, data)
+    } else if (topic === TOPICS.PEER_DISCOVERY[0]) {
+      // Do nothing for peer discovery topics
+    } else {
+      // Handle custom topic messages
+      chatMessageCB(evt, topic, data)
+    }
+  }, [chatMessageCB])
+
   const handleDirectMessage = useCallback((evt: CustomEvent<DirectMessageEvent>) => {
     if (evt.detail.type !== MIME_TEXT_PLAIN) {
       return
@@ -197,18 +207,17 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     const newMessage: ChatMessage = {
       msgId: crypto.randomUUID(),
-      msg: evt.detail.data,
+      msg: evt.detail.content,
       fileObjectUrl: undefined,
-      peerId: evt.detail.from.toString(),
+      peerId: evt.detail.connection.remotePeer.toString(),
       read: false,
       receivedAt: Date.now(),
-      roomId: `peer:${evt.detail.from.toString()}`
+      roomId: `peer:${evt.detail.connection.remotePeer.toString()}`
     }
 
-    const peerId = evt.detail.from.toString()
     setDirectMessages(prev => ({
       ...prev,
-      [peerId]: [...(prev[peerId] || []), newMessage]
+      [evt.detail.connection.remotePeer.toString()]: [...(prev[evt.detail.connection.remotePeer.toString()] || []), newMessage]
     }))
   }, [setDirectMessages])
 
@@ -235,23 +244,6 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       TOPICS.PEER_DISCOVERY.forEach(topic => libp2p.services.pubsub.unsubscribe(topic))
     }
   }, [libp2p, messageCB, handleDirectMessage])
-
-  return (
-    <chatContext.Provider
-      value={{
-        rooms,
-        setRooms,
-        activeRoomId,
-        setActiveRoomId,
-        directMessages,
-        setDirectMessages,
-        files,
-        setFiles,
-      }}
-    >
-      {children}
-    </chatContext.Provider>
-  )
 
   useEffect(() => {
     libp2p.services.pubsub.addEventListener('message', messageCB)
@@ -283,18 +275,18 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <chatContext.Provider
       value={{
-        roomId,
-        setRoomId,
+        rooms,
+        setRooms,
+        activeRoomId,
+        setActiveRoomId,
         roomType,
         setRoomType,
-        messageHistory,
-        setMessageHistory,
         directMessages,
         setDirectMessages,
         files,
         setFiles,
         roomUnreads,
-        setRoomUnreads,
+        setRoomUnreads
       }}
     >
       {children}
