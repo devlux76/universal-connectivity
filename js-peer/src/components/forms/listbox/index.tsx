@@ -86,8 +86,12 @@ export function ListboxOption<T>({ children, className, ...props }: ListboxOptio
   )
 }
 
-export function ListboxLabel({ className, ...props }: ListboxLabelProps) {
-  return <span className={clsx(className, listboxStyles.options.label)} {...props} />
+export function ListboxLabel({ className, children, ...props }: ListboxLabelProps) {
+  return (
+    <span className={clsx(className, listboxStyles.options.label)} {...props}>
+      {typeof children === 'function' ? children({}) : children}
+    </span>
+  )
 }
 
 export function ListboxDescription({ className, children, ...props }: ListboxDescriptionProps) {

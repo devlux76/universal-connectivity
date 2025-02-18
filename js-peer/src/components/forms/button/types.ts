@@ -1,5 +1,7 @@
 import type { ButtonProps as HeadlessButtonProps } from '@headlessui/react'
-
+import type React from 'react'
+import type { Link } from '../../link'
+import { buttonStyles } from './styles'
 
 export interface ButtonBaseProps {
   className?: string
@@ -10,7 +12,7 @@ export interface ButtonColorProps {
   /**
    * Color variant to use. If using outline or plain, color will be ignored.
    */
-  color?: keyof typeof buttonColors
+  color?: keyof typeof buttonStyles.colors
   outline?: never
   plain?: never
 }

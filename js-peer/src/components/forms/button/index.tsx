@@ -1,7 +1,7 @@
 import { Button as HeadlessButton } from '@headlessui/react'
 import { clsx } from 'clsx'
 import { forwardRef } from 'react'
-import { Link } from '../link'
+import { Link } from '../../link'
 import { buttonBaseStyles, buttonStyles } from './styles'
 import type { ButtonProps } from './types'
 
