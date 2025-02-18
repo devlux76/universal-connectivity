@@ -55,6 +55,8 @@ export interface ChatContextInterface {
   setFiles: (files: Map<string, ChatFile>) => void
   roomUnreads: RoomUnreads
   setRoomUnreads: (unread: RoomUnreads | ((prev: RoomUnreads) => RoomUnreads)) => void
+  messageHistory: ChatMessage[];
+  setMessageHistory: (messages: ChatMessage[]) => void;
 }
 
 export const chatContext = createContext<ChatContextInterface>({
@@ -69,7 +71,9 @@ export const chatContext = createContext<ChatContextInterface>({
   files: new Map<string, ChatFile>(),
   setFiles: () => {},
   roomUnreads: {},
-  setRoomUnreads: () => {}
+  setRoomUnreads: () => {},
+  messageHistory: [],
+  setMessageHistory: () => {}
 })
 
 export const useChatContext = () => {
@@ -91,7 +95,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeRoomId, setActiveRoomId] = useState<string>('lobby')
   const [roomType, setRoomType] = useState<RoomType>('topic')
   const [roomUnreads, setRoomUnreads] = useState<RoomUnreads>({})
-
+  const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([])
   const { libp2p } = useLibp2pContext()
 
   const chatMessageCB = useCallback((evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
@@ -126,7 +130,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [activeRoomId, setRooms])
 
-  const chatFileMessageCB = async (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
+  const chatFileMessageCB = useCallback(async (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
     const newChatFileMessage = (id: string, body: Uint8Array) => {
       return `File: ${id} (${body.length} bytes)`
     }
@@ -182,7 +186,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err) {
       log('Failed to retrieve file:', err)
     }
-  }
+  }, [libp2p, activeRoomId, setRooms, files, setFiles])
 
   const messageCB = useCallback((evt: CustomEvent<Message>) => {
     const { topic, data } = evt.detail
@@ -198,7 +202,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       // Handle custom topic messages
       chatMessageCB(evt, topic, data)
     }
-  }, [chatMessageCB])
+  }, [chatMessageCB, chatFileMessageCB])
 
   const handleDirectMessage = useCallback((evt: CustomEvent<DirectMessageEvent>) => {
     if (evt.detail.type !== MIME_TEXT_PLAIN) {
@@ -286,7 +290,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         files,
         setFiles,
         roomUnreads,
-        setRoomUnreads
+        setRoomUnreads,
+        messageHistory,
+        setMessageHistory
       }}
     >
       {children}

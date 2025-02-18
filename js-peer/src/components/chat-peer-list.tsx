@@ -14,7 +14,14 @@ type RoomUnreads = { [roomId: string]: number }
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { rooms, setRooms, activeRoomId, setActiveRoomId, roomUnreads, setRoomUnreads } = useChatContext()
+  const { 
+    rooms: _rooms,
+    setRooms,
+    activeRoomId, 
+    setActiveRoomId, 
+    roomUnreads, 
+    setRoomUnreads 
+  } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')

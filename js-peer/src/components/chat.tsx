@@ -19,7 +19,7 @@ export default function ChatContainer() {
   const { 
     rooms, setRooms, 
     activeRoomId, setActiveRoomId,
-    directMessages, setDirectMessages, 
+    directMessages: _directMessages, setDirectMessages, 
     files, setFiles 
   } = useChatContext()
   const [input, setInput] = useState<string>('')
