@@ -1,33 +1,57 @@
 import { useLibp2pContext } from '@/context/ctx'
-import { TOPICS } from '@/lib/constants'
+import { useChatContext } from '@/context/chat-ctx'
+import { TOPICS, sanitizeTopicName, formatTopicNameForDisplay } from '@/lib/constants'
 import React, { useEffect, useState } from 'react'
 import type { PeerId } from '@libp2p/interface'
 import { PeerWrapper } from './peer'
 import { loadTopicsFromStorage, storeTopicsInStorage } from '../lib/libp2p'
-import { Button } from './button'
+
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
+  const { roomId, setRoomId } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
+  const [error, setError] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
     setTopics(Array.from(loadTopicsFromStorage()))
   }, [])
 
-  const handleCreateRoom = () => {
-    if (newTopic.trim()) {
-      const topic = newTopic.trim()
-      const updated = new Set(topics).add(topic)
-      storeTopicsInStorage(updated)
-      setTopics(Array.from(updated))
-      // Subscribe to the new topic and publish its existence
-      libp2p.services.pubsub.subscribe(topic)
-      libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(topic))
-      setNewTopic('')
+  const validateTopicName = (name: string): string | null => {
+    if (!name || !name.trim()) return 'Topic name is required';
+    const sanitized = sanitizeTopicName(name);
+    if (topics.includes(sanitized)) return 'A room with this name already exists';
+    return null;
+  };
+
+  const handleCreateRoom = async () => {
+    setError('');
+    const validationError = validateTopicName(newTopic);
+    if (validationError) {
+      setError(validationError);
+      return;
     }
-  }
+
+    setIsCreating(true);
+    try {
+      const topic = sanitizeTopicName(newTopic);
+      const updated = new Set(topics).add(topic);
+      storeTopicsInStorage(updated);
+      setTopics(Array.from(updated));
+      
+      // Subscribe to the new topic and publish its existence
+      await libp2p.services.pubsub.subscribe(topic);
+      await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(topic));
+      setNewTopic('');
+    } catch (err) {
+      setError('Failed to create room: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   useEffect(() => {
     if (!libp2p?.services?.pubsub) return
@@ -42,9 +66,9 @@ export function ChatPeerList() {
       setSubscribers(uniqueSubscribers)
     }
 
-    const onMessage = async (msg: any) => {
+    const onMessage = async (evt: CustomEvent<{ data: Uint8Array }>) => {
       try {
-        const topic = new TextDecoder().decode(msg.data)
+        const topic = new TextDecoder().decode(evt.detail.data)
         const currentTopics = new Set(topics)
         if (!currentTopics.has(topic)) {
           currentTopics.add(topic)
@@ -72,40 +96,71 @@ export function ChatPeerList() {
   }, [libp2p, topics])
 
   return (
-    <div className="border-l border-gray-300 lg:col-span-1">
-      <div className="overflow-auto h-[32rem]">
-        <div className="px-3 py-2 border-b border-gray-300">
-          <h2 className="text-lg font-semibold text-gray-600">Peers</h2>
-          <div className="mt-2">
-            {<PeerWrapper peer={libp2p.peerId} self withName={true} withUnread={false} />}
-          </div>
-          {subscribers.map((p) => (
-            <div key={p.toString()} className="mt-2">
-              <PeerWrapper peer={p} self={false} withName={true} withUnread={true} />
-            </div>
-          ))}
-        </div>
-        
-        <div className="px-3 py-4">
-          <h2 className="text-lg font-semibold text-gray-600 mb-3">Rooms</h2>
-          <div className="space-y-2">
-            {topics.map(topic => (
-              <div key={topic} className="flex items-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100">
-                <span className="flex-1 text-sm text-gray-700">{topic}</span>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-4 flex gap-2">
+    <div className="border-l border-gray-300 lg:col-span-1 bg-gray-800 text-white h-full">
+      <div className="flex flex-col h-full">
+        <div className="p-4 border-b border-gray-700">
+          <h2 className="text-lg font-semibold mb-4">Rooms</h2>
+          <div className="flex flex-col gap-2">
             <input
               type="text"
               value={newTopic}
-              onChange={e => setNewTopic(e.target.value)}
-              onKeyPress={e => e.key === 'Enter' && handleCreateRoom()}
-              placeholder="New room name"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setNewTopic(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateRoom()}
+              placeholder="Create a new room"
+              className="w-full rounded-md border-0 py-2 px-3 bg-gray-700 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800"
             />
-            <Button onClick={handleCreateRoom}>Create</Button>
+            {error && <p className="text-red-400 text-sm">{error}</p>}
+            <button
+              onClick={handleCreateRoom}
+              disabled={isCreating}
+              className={`w-full rounded-md px-3 py-2 text-sm font-semibold shadow-sm transition-colors ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+            >
+              {isCreating ? 'Creating...' : 'Create Room'}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          <div className="px-3 py-2 border-b border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-300">Online Peers</h2>
+            <div className="mt-2">
+              <div className="space-y-2">
+                <PeerWrapper peer={libp2p.peerId} self withName={true} withUnread={false} />
+                {subscribers.map((p) => (
+                  <PeerWrapper 
+                    key={p.toString()} 
+                    peer={p} 
+                    self={false} 
+                    withName={true} 
+                    withUnread={true} 
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="px-3 py-2">
+            {topics.map((topic) => {
+              const isActive = roomId === topic;
+              const peerCount = subscribers.filter((sub) => sub.toString() === topic).length;
+              
+              return (
+                <button
+                  key={topic}
+                  onClick={() => setRoomId(topic)}
+                  className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
+                >
+                  <span className={`flex-1 truncate text-left ${isActive ? 'font-medium' : ''}`}>
+                    # {formatTopicNameForDisplay(topic)}
+                  </span>
+                  {peerCount > 0 && (
+                    <span className="text-xs text-gray-400 group-hover:text-gray-300">
+                      {peerCount} {peerCount === 1 ? 'peer' : 'peers'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

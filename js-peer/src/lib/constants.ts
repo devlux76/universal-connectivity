@@ -1,3 +1,44 @@
+// Topic name validation and sanitization
+export const TOPIC_NAME_MIN_LENGTH = 3;
+export const TOPIC_NAME_MAX_LENGTH = 64;
+
+// Sanitize topic name for storage
+export function sanitizeTopicName(name: string): string {
+  // Replace any character that's not alphanumeric, hyphen, or underscore with a space
+  let sanitized = name.replace(/[^a-zA-Z0-9-_ ]/g, ' ');
+  
+  // Replace multiple spaces with a single space
+  sanitized = sanitized.replace(/\s+/g, ' ');
+  
+  // Trim spaces from start and end
+  sanitized = sanitized.trim();
+  
+  // Replace spaces with hyphens
+  sanitized = sanitized.replace(/\s/g, '-');
+  
+  // Ensure it starts with a letter or number (if it doesn't, prepend 'room-')
+  if (!/^[a-zA-Z0-9]/.test(sanitized)) {
+    sanitized = 'room-' + sanitized;
+  }
+  
+  // Truncate if too long
+  if (sanitized.length > TOPIC_NAME_MAX_LENGTH) {
+    sanitized = sanitized.slice(0, TOPIC_NAME_MAX_LENGTH);
+  }
+  
+  // If too short, pad with random chars
+  while (sanitized.length < TOPIC_NAME_MIN_LENGTH) {
+    sanitized += '-' + Math.random().toString(36).substring(2, 3);
+  }
+  
+  return sanitized;
+}
+
+// Format topic name for display
+export function formatTopicNameForDisplay(name: string): string {
+  return name.replace(/-/g, ' ');
+}
+
 export const TOPICS = {
   CHAT: ['universal-connectivity'],
   FILE: ['universal-connectivity-file'],
