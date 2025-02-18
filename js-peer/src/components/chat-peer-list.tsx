@@ -12,7 +12,7 @@ const log = forComponent('chat-peer-list')
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { rooms, setRooms, activeRoomId, setActiveRoomId } = useChatContext()
+  const { _rooms, setRooms, _activeRoomId, setActiveRoomId } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
@@ -42,10 +42,16 @@ export function ChatPeerList() {
     setIsCreating(true);
     try {
       const roomId = sanitizeTopicName(newTopic);
-      const roomTopic = getRoomTopic(roomId);
       
-      // Subscribe to the new room's topic
-      await libp2p.services.pubsub.subscribe(roomTopic);
+      // First subscribe to the topic
+      await libp2p.services.pubsub.subscribe(roomId);
+      
+      // Wait a moment for the subscription to take effect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get current subscribers to verify subscription worked
+      const subscribers = libp2p.services.pubsub.getSubscribers(roomId);
+      log(`Current subscribers for new topic ${roomId}:`, subscribers.toString());
       
       // Add the new room to state
       setRooms(prev => ({
@@ -60,49 +66,17 @@ export function ChatPeerList() {
       // Switch to the new room
       setActiveRoomId(roomId);
       
-      // Save the topic
+      // Update local state and storage
       const updatedTopics = [...topics, roomId];
       setTopics(updatedTopics);
-      saveTopicsToStorage(updatedTopics);
-      
-      setNewTopic('');
-    } catch (err) {
-      setError('Failed to create room: ' + err.message);
-    } finally {
-      setIsCreating(false);
-    }
-      setError(validationError);
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      const topic = sanitizeTopicName(newTopic);
-      
-      // First subscribe to the topic
-      await libp2p.services.pubsub.subscribe(topic);
-      
-      // Wait a moment for the subscription to take effect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Get current subscribers to verify subscription worked
-      const subscribers = libp2p.services.pubsub.getSubscribers(topic);
-      log(`Current subscribers for new topic ${topic}:`, subscribers.toString());
-      
-      // Update local state and storage
-      const updated = new Set(topics).add(topic);
-      storeTopicsInStorage(updated);
-      setTopics(Array.from(updated));
+      storeTopicsInStorage(new Set(updatedTopics));
       
       // Announce the new topic to other peers
-      await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(topic));
+      await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(roomId));
       
-      // Switch to the new room
-      setRoomId(topic);
-      setRoomType('topic');
       setNewTopic('');
     } catch (err) {
-      setError('Failed to create room: ' + (err instanceof Error ? err.message : String(err)));
+      setError('Failed to create room: ' + (err as Error).message);
     } finally {
       setIsCreating(false);
     }
