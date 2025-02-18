@@ -4,7 +4,7 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 
 ## Stage 1: Core Library & Message Handling
 ### Direct Message System
-- [ ] Create new directory structure:
+- [x] Create new directory structure:
   ```
   src/lib/messages/
     ├── index.ts         # Facade
@@ -14,17 +14,25 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
     ├── validation.ts    # Message validation
     └── handlers/        # Message-specific handlers
   ```
-- [ ] Refactor protobuf integration:
-  - [ ] Move from `src/lib/protobuf/direct-message.ts` (385 lines) to modular structure
-  - [ ] Split protocol buffer definitions into separate files by message type
-  - [ ] Create specialized encoders/decoders for each message type
+- [x] Refactor protobuf integration:
+  - [x] Move from `src/lib/protobuf/direct-message.ts` (385 lines) to modular structure
+  - [x] Split protocol buffer definitions into separate files by message type
+  - [x] Create specialized encoders/decoders for each message type
 
 ### LibP2P Integration
-- [ ] Reorganize `src/lib/libp2p/start.ts` (130 lines):
-  - [ ] Extract network initialization logic
-  - [ ] Separate peer discovery handling
-  - [ ] Create dedicated connection management module
-  - [ ] Move stream handling to its own module
+- [x] Reorganize `src/lib/libp2p/start.ts` (130 lines):
+  ```
+  src/lib/libp2p/
+    ├── index.ts           # Main facade & exports
+    ├── node-creation.ts   # Node initialization
+    ├── peer-discovery.ts  # Discovery logic
+    ├── connection.ts      # Connection management
+    └── stream.ts         # Stream handling
+  ```
+  - [x] Extract network initialization logic
+  - [x] Separate peer discovery handling
+  - [x] Create dedicated connection management module
+  - [x] Move stream handling to its own module
 
 ## Stage 2: State Management
 ### Chat Context Refactoring
@@ -37,9 +45,9 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
     ├── actions.ts       # Action creators
     └── hooks/           # Custom hooks
   ```
-- [ ] Extract state management logic into reducers
-- [ ] Create specialized hooks for common operations
-- [ ] Implement proper error boundaries
+  - [ ] Extract state management logic into reducers
+  - [ ] Create specialized hooks for common operations
+  - [ ] Implement proper error boundaries
 
 ## Stage 3: Component Library
 ### Chat Components
@@ -66,10 +74,10 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
     ├── layout/        # Layout components
     └── common/        # Shared utilities
   ```
-- [ ] Refactor form controls:
-  - [ ] Move switch.tsx (222 lines) to forms/
+- [x] Refactor form controls:
+  - [x] Move switch.tsx (222 lines) to forms/
   - [x] Extract shared logic from checkbox.tsx (175 lines) and radio.tsx (157 lines)
-  - [ ] Split button.tsx (217 lines) into button variants
+  - [x] Split button.tsx (217 lines) into button variants
   - [ ] Reorganize listbox.tsx (208 lines)
   - [ ] Simplify dropdown.tsx (194 lines)
 
@@ -119,37 +127,33 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
    - Provide codemods where necessary
    - Support both old and new implementations during transition
 
-## Progress Tracking
-- [ ] Stage 1 - Core Library (0%)
-- [ ] Stage 2 - State Management (0%)
-- [x] Stage 3.1 - Form Controls Refactor (66%)
-  - [x] Created shared form control types and base components
-  - [x] Refactored checkbox component
-  - [x] Refactored radio component
-  - [x] Refactored switch component
-  - [x] Refactored button component into modular structure
-  - [ ] Remaining form controls pending (listbox, dropdown)
-- [ ] Stage 3.2 - Component Library (0%)
-- [ ] Stage 4 - Pages & Routing (0%)
-- [ ] Stage 5 - Testing & Documentation (0%)
-
-## Notes
-- Each stage can be worked on independently
-- Priority should be given to most used/critical components
-- Regular benchmarking should be done to ensure performance is maintained
-- Documentation should be updated as changes are made
-
 ## Progress Updates
 
+### 2024-01-xx - Core Library Refactor
+- [x] Created new messages/ directory structure
+- [x] Migrated protobuf definitions to modular structure
+- [x] Implemented facade pattern for direct message system
+- [x] Validated backward compatibility
+- [x] Added type definitions
+- [x] Created specialized encoders/decoders
+- [x] Completed LibP2P integration refactoring:
+  - [x] Created modular structure for libp2p components
+  - [x] Separated node creation logic
+  - [x] Extracted peer discovery functionality
+  - [x] Implemented connection management
+  - [x] Added stream handling module
+  - [x] Created unified facade
+- [ ] Next: Chat Context refactoring
+
 ### 2024-01-xx - Form Controls Refactor
-- Created new forms/ directory structure
-- Extracted shared types and base components
-- Refactored checkbox and radio components to use shared logic
-- Reduced duplication in styling and layout code
-- Refactored switch component to use shared patterns
-- Split button component into modular structure:
-  - Separated types
-  - Extracted styles configuration
-  - Created reusable base styles
-  - Improved component organization
-- Next: Listbox and Dropdown components
+- [x] Created new forms/ directory structure
+- [x] Extracted shared types and base components
+- [x] Refactored checkbox and radio components to use shared logic
+- [x] Reduced duplication in styling and layout code
+- [x] Refactored switch component to use shared patterns
+- [x] Split button component into modular structure:
+  - [x] Separated types
+  - [x] Extracted styles configuration
+  - [x] Created reusable base styles
+  - [x] Improved component organization
+- [ ] Next: Listbox and Dropdown components
