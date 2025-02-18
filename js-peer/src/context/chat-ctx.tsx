@@ -2,11 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useLibp2pContext } from './ctx'
 import type { Message } from '@libp2p/interface'
 import {
-  CHAT_FILE_TOPIC,
-  CHAT_TOPIC,
+  TOPICS,
   FILE_EXCHANGE_PROTOCOL,
   MIME_TEXT_PLAIN,
-  PUBSUB_PEER_DISCOVERY,
 } from '@/lib/constants'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
@@ -74,24 +72,18 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const { libp2p } = useLibp2pContext()
 
   const messageCB = (evt: CustomEvent<Message>) => {
-    // FIXME: Why does 'from' not exist on type 'Message'?
     const { topic, data } = evt.detail
+    // Type assertion to match the const-asserted topic types
+    const topicStr = topic as typeof TOPICS.CHAT[number] | typeof TOPICS.FILE[number] | typeof TOPICS.PEER_DISCOVERY[number];
 
-    switch (topic) {
-      case CHAT_TOPIC: {
-        chatMessageCB(evt, topic, data)
-        break
-      }
-      case CHAT_FILE_TOPIC: {
-        chatFileMessageCB(evt, topic, data)
-        break
-      }
-      case PUBSUB_PEER_DISCOVERY: {
-        break
-      }
-      default: {
-        console.error(`Unexpected event %o on gossipsub topic: ${topic}`, evt)
-      }
+    if (TOPICS.CHAT.includes(topicStr as typeof TOPICS.CHAT[number])) {
+      chatMessageCB(evt, topic, data)
+    } else if (TOPICS.FILE.includes(topicStr as typeof TOPICS.FILE[number])) {
+      chatFileMessageCB(evt, topic, data)
+    } else if (TOPICS.PEER_DISCOVERY.includes(topicStr as typeof TOPICS.PEER_DISCOVERY[number])) {
+      // Do nothing for peer discovery topics
+    } else {
+      console.error(`Unexpected event %o on gossipsub topic: ${topic}`, evt)
     }
   }
 

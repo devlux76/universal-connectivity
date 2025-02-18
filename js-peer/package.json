@@ -18,6 +18,7 @@
     "@heroicons/react": "^2.2.0",
     "@libp2p/bootstrap": "^11.0.22",
     "@libp2p/circuit-relay-v2": "^3.1.12",
+    "@libp2p/crypto" : "*",
     "@libp2p/identify": "^3.0.18",
     "@libp2p/interface": "^2.5.0",
     "@libp2p/interface-internal": "^2.3.0",
