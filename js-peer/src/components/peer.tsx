@@ -14,10 +14,10 @@ export interface PeerProps {
 export function PeerWrapper({ peer, self, withName, withUnread }: PeerProps) {
   const { libp2p } = useLibp2pContext()
   const [identified, setIdentified] = useState(false)
-  const { setActiveRoomId, setRoomType } = useChatContext()
+  const { setRoomId, setRoomType } = useChatContext()
 
   const handleSetRoom = () => {
-    setActiveRoomId(peer.toString())
+    setRoomId(peer.toString())
     setRoomType('dm')
   }
 

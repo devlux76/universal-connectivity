@@ -1,42 +1,39 @@
-import { useEffect, useState, Fragment } from 'react'
-import { Transition } from '@headlessui/react'
-import { XCircleIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/solid'
+import { useEffect, useState, Fragment } from 'react';
+import { Transition } from '@headlessui/react';
+import { XCircleIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 interface AlertState {
-  show: boolean
+  show: boolean;
   details: {
-    isRetry?: boolean
-    attempt?: number
-    error?: string
-    addr?: string
-  } | null
+    isRetry?: boolean;
+    attempt?: number;
+    error?: string;
+    addr?: string;
+  } | null;
 }
 
 export function ConnectionAlert() {
-  const [state, setState] = useState<AlertState>({ show: false, details: null })
-  const [isOpen, setIsOpen] = useState(false)
+  const [state, setState] = useState<AlertState>({ show: false, details: null });
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const handleConnectionRetry = (event: CustomEvent<{ attempt: number; error: string }>) => {
-      setState({ show: true, details: { isRetry: true, attempt: event.detail.attempt, error: event.detail.error } })
-      setIsOpen(true)
-    }
+      setState({ show: true, details: { isRetry: true, attempt: event.detail.attempt, error: event.detail.error } });
+      setIsOpen(true);
+    };
     const handleDialRetry = (event: CustomEvent<{ attempt: number; error: string; addr: string }>) => {
-      setState({
-        show: true,
-        details: { isRetry: true, attempt: event.detail.attempt, error: event.detail.error, addr: event.detail.addr },
-      })
-      setIsOpen(true)
-    }
-    window.addEventListener('libp2p:connection:retry', handleConnectionRetry as EventListener)
-    window.addEventListener('libp2p:dial:retry', handleDialRetry as EventListener)
+      setState({ show: true, details: { isRetry: true, attempt: event.detail.attempt, error: event.detail.error, addr: event.detail.addr } });
+      setIsOpen(true);
+    };
+    window.addEventListener('libp2p:connection:retry', handleConnectionRetry as EventListener);
+    window.addEventListener('libp2p:dial:retry', handleDialRetry as EventListener);
     return () => {
-      window.removeEventListener('libp2p:connection:retry', handleConnectionRetry as EventListener)
-      window.removeEventListener('libp2p:dial:retry', handleDialRetry as EventListener)
-    }
-  }, [])
+      window.removeEventListener('libp2p:connection:retry', handleConnectionRetry as EventListener);
+      window.removeEventListener('libp2p:dial:retry', handleDialRetry as EventListener);
+    };
+  }, []);
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <>
@@ -71,8 +68,12 @@ export function ConnectionAlert() {
                         ? `Connection attempt ${state.details.attempt} failed`
                         : 'Connection successful!'}
                     </p>
-                    {state.details?.error && <p className="mt-1 text-sm text-gray-500">{state.details.error}</p>}
-                    {state.details?.addr && <p className="mt-1 text-sm text-gray-500">Address: {state.details.addr}</p>}
+                    {state.details?.error && (
+                      <p className="mt-1 text-sm text-gray-500">{state.details.error}</p>
+                    )}
+                    {state.details?.addr && (
+                      <p className="mt-1 text-sm text-gray-500">Address: {state.details.addr}</p>
+                    )}
                   </div>
                   <div className="ml-4 flex flex-shrink-0">
                     <button
@@ -91,5 +92,5 @@ export function ConnectionAlert() {
         </div>
       </div>
     </>
-  )
+  );
 }
