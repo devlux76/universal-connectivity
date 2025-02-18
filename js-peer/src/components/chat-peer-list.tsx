@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react'
 import type { PeerId } from '@libp2p/interface'
 import { PeerWrapper } from './peer'
 import { loadTopicsFromStorage, storeTopicsInStorage } from '../lib/libp2p'
-
+import { isValidTopic, autofixTopicsStorage } from '@/lib/libp2p/topics'
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
@@ -17,6 +17,7 @@ export function ChatPeerList() {
   const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
+    autofixTopicsStorage();
     setTopics(Array.from(loadTopicsFromStorage()))
   }, [])
 
@@ -69,6 +70,10 @@ export function ChatPeerList() {
     const onMessage = async (evt: CustomEvent<{ data: Uint8Array }>) => {
       try {
         const topic = new TextDecoder().decode(evt.detail.data)
+        if (!isValidTopic(topic)) {
+          console.warn(`Ignoring invalid topic: ${topic}`)
+          return
+        }
         const currentTopics = new Set(topics)
         if (!currentTopics.has(topic)) {
           currentTopics.add(topic)

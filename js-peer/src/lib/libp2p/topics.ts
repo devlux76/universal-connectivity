@@ -3,9 +3,11 @@ import { useLibp2pContext } from '@/context/ctx';
 
 const TOPICS_STORAGE_KEY = 'subscribedTopics';
 
-// Checks if a topic is valid (contains only printable ASCII characters)
+// Checks if a topic is valid (contains only alphanumeric characters and dashes)
 export function isValidTopic(topic: string): boolean {
-  return /^[\x20-\x7E]+$/.test(topic);
+  // Example validation logic: only allow alphanumeric characters and dashes
+  const validTopicRegex = /^[a-zA-Z0-9-]+$/
+  return validTopicRegex.test(topic)
 }
 
 // Automatically fix any corrupted topic data in localStorage
@@ -45,7 +47,12 @@ export function loadTopicsFromStorage(): Set<string> {
     const data = localStorage.getItem(TOPICS_STORAGE_KEY);
     if (!data) return new Set();
     const topics = JSON.parse(data);
-    return new Set(topics.filter(isValidTopic));
+    const validTopics = topics.filter(isValidTopic);
+    if (validTopics.length !== topics.length) {
+      // Remove invalid topics from local storage
+      localStorage.setItem(TOPICS_STORAGE_KEY, JSON.stringify(validTopics));
+    }
+    return new Set(validTopics);
   } catch {
     return new Set();
   }
