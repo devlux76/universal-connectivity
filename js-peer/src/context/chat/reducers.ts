@@ -1,4 +1,4 @@
-import { ChatMessage, ChatState } from '../types'
+import { ChatMessage, ChatState } from './types'
 import { Draft } from 'immer'
 
 // Room reducers

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useLibp2pContext } from '../ctx'
-import type { Message } from '@libp2p/interface'
 import { TOPICS, FILE_EXCHANGE_PROTOCOL, MIME_TEXT_PLAIN } from '@/lib/constants'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
@@ -11,6 +10,7 @@ import { forComponent } from '@/lib/logger'
 import { DirectMessageEvent, directMessageEvent } from '@/lib/messages'
 import { ChatContextValue, ChatMessage, ChatState } from './types'
 import { produce } from 'immer'
+import type { Message, SignedMessage, PeerId } from '@libp2p/interface'
 import { rootReducer } from './reducers'
 
 const log = forComponent('chat-context')
@@ -80,46 +80,54 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const chatFileMessageCB = useCallback(
     async (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
       const fileId = new TextDecoder().decode(data)
+      log(`${topic}: ${fileId}`)
 
       if (evt.detail.type !== 'signed') return
 
       try {
-        const stream = await libp2p.dialProtocol(evt.detail.from, FILE_EXCHANGE_PROTOCOL)
+        const stream = await libp2p.dialProtocol((evt.detail as SignedMessage).from as unknown as PeerId, FILE_EXCHANGE_PROTOCOL)
         const chunks = await pipe(
           [fileId],
-          (source) => map(source, (str) => uint8ArrayFromString(str)),
-          stream,
-          async (source) => {
-            const chunks: Uint8Array[] = []
-            for await (const chunk of source) {
-              chunks.push(new Uint8Array(chunk.subarray()))
+          function* (source) {
+            for (const str of source) {
+              yield uint8ArrayFromString(str)
             }
-            return chunks
           },
+          lp.encode,
+          stream,
+          lp.decode,
+          async function* (source) {
+            for await (const buf of source) {
+              yield uint8ArrayToString(buf.subarray())
+            }
+          }
         )
 
-        const body = chunks[0]
+        const firstValue = await chunks.next()
+        if (!firstValue.value) throw new Error('No data received from file transfer')
+        
+        const body = uint8ArrayFromString(firstValue.value)
 
         updateState((draft) => {
           rootReducer.addFile(draft, fileId, {
             body,
-            sender: evt.detail.from.toString(),
+            sender: (evt.detail as SignedMessage).from.toString(),
           })
 
           const message: ChatMessage = {
             msgId: crypto.randomUUID(),
             msg: `File: ${fileId} (${body.length} bytes)`,
             fileObjectUrl: window.URL.createObjectURL(new Blob([body])),
-            peerId: evt.detail.from.toString(),
+            peerId: (evt.detail as SignedMessage).from.toString(),
             read: false,
             receivedAt: Date.now(),
             roomId: state.activeRoomId,
           }
 
-          rootReducer.addMessageToRoom(draft, state.activeRoomId, message)
+          rootReducer.addToHistory(draft, message)
         })
       } catch (err) {
-        log('Failed to retrieve file:', err)
+        log('Error receiving file:', err)
       }
     },
     [libp2p, state.activeRoomId, updateState],
@@ -156,10 +164,12 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Add event listeners
     const onMessage = (evt: CustomEvent<Message>) => {
+      if (evt.detail.type !== 'signed') return
+
       if (evt.detail.topic.startsWith(TOPICS.ROOMS.PREFIX) || evt.detail.topic === TOPICS.ROOMS.LOBBY) {
-        chatMessageCB(evt, evt.detail.topic, evt.detail.data)
-      } else if (TOPICS.FILE.includes(evt.detail.topic)) {
-        chatFileMessageCB(evt, evt.detail.topic, evt.detail.data)
+        chatMessageCB(evt as CustomEvent<SignedMessage>, evt.detail.topic, evt.detail.data)
+      } else if (evt.detail.topic === TOPICS.FILE[0]) {
+        chatFileMessageCB(evt as CustomEvent<SignedMessage>, evt.detail.topic, evt.detail.data)
       }
     }
 

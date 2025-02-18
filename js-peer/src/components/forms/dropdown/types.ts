@@ -1,6 +1,6 @@
 import type {
   MenuProps as HeadlessMenuProps,
-
+  Menu as HeadlessMenuButton,
   MenuItemProps as HeadlessMenuItemProps,
   MenuItemsProps as HeadlessMenuItemsProps,
   MenuHeadingProps as HeadlessMenuHeadingProps,
@@ -13,8 +13,9 @@ import type { ComponentPropsWithoutRef, ElementType } from 'react'
 
 export interface DropdownProps extends HeadlessMenuProps {}
 
-export interface DropdownButtonProps<T extends ElementType>
-  extends React.ComponentProps<typeof HeadlessMenuButton<T>> {}
+export type DropdownButtonProps<T extends ElementType = 'button'> = {
+  as?: T
+} & Omit<React.ComponentPropsWithoutRef<T>, keyof HeadlessMenuProps>
 
 export interface DropdownItemProps extends HeadlessMenuItemProps<'button'> {
   href?: string
