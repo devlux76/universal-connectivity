@@ -58,7 +58,7 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
   - [ ] Search/filter functionality
 
 ### UI Controls
-- [ ] Create organized component structure:
+- [x] Create organized component structure:
   ```
   src/components/
     ├── forms/          # Form controls
@@ -68,10 +68,10 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
   ```
 - [ ] Refactor form controls:
   - [ ] Move switch.tsx (222 lines) to forms/
+  - [x] Extract shared logic from checkbox.tsx (175 lines) and radio.tsx (157 lines)
   - [ ] Split button.tsx (217 lines) into button variants
   - [ ] Reorganize listbox.tsx (208 lines)
   - [ ] Simplify dropdown.tsx (194 lines)
-  - [ ] Extract shared logic from checkbox.tsx (175 lines) and radio.tsx (157 lines)
 
 ### Navigation & Tables
 - [ ] Refactor table.tsx (145 lines):
@@ -122,7 +122,12 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 ## Progress Tracking
 - [ ] Stage 1 - Core Library (0%)
 - [ ] Stage 2 - State Management (0%)
-- [ ] Stage 3 - Component Library (0%)
+- [x] Stage 3.1 - Form Controls Refactor (33%)
+  - [x] Created shared form control types and base components
+  - [x] Refactored checkbox component
+  - [x] Refactored radio component
+  - [ ] Remaining form controls pending
+- [ ] Stage 3.2 - Component Library (0%)
 - [ ] Stage 4 - Pages & Routing (0%)
 - [ ] Stage 5 - Testing & Documentation (0%)
 
@@ -131,3 +136,12 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 - Priority should be given to most used/critical components
 - Regular benchmarking should be done to ensure performance is maintained
 - Documentation should be updated as changes are made
+
+## Progress Updates
+
+### 2024-01-xx - Form Controls Refactor
+- Created new forms/ directory structure
+- Extracted shared types and base components
+- Refactored checkbox and radio components to use shared logic
+- Reduced duplication in styling and layout code
+- Next: Switch and Button components
