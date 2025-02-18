@@ -14,10 +14,11 @@ export interface PeerProps {
 export function PeerWrapper({ peer, self, withName, withUnread }: PeerProps) {
   const { libp2p } = useLibp2pContext()
   const [identified, setIdentified] = useState(false)
-  const { setRoomId } = useChatContext()
+  const { setRoomId, setRoomType } = useChatContext()
 
-  const handleSetRoomId = () => {
+  const handleSetRoom = () => {
     setRoomId(peer.toString())
+    setRoomType('dm')
   }
 
   useEffect(() => {
@@ -39,22 +40,13 @@ export function PeerWrapper({ peer, self, withName, withUnread }: PeerProps) {
 
   if (identified && libp2p.services.directMessage.isDMPeer(peer)) {
     return (
-      <div className="relative inline-block text-left cursor-pointer" onClick={() => handleSetRoomId()}>
+      <button onClick={handleSetRoom} className="w-full text-left">
         <Peer peer={peer} self={self} withName={withName} withUnread={withUnread} />
-      </div>
+      </button>
     )
   }
 
-  if (identified && !libp2p.services.directMessage.isDMPeer(peer)) {
-    return (
-      <div className="relative inline-block text-left group">
-        <Peer peer={peer} self={self} withName={withName} withUnread={withUnread} />
-        <div className="absolute top-10 left-5 scale-0 rounded bg-white border text-gray-600 p-2 text-xs group-hover:scale-100 z-10">
-          Direct{'\u00A0'}message unsupported
-        </div>
-      </div>
-    )
-  }
+  return <Peer peer={peer} self={self} withName={withName} withUnread={withUnread} />
 }
 
 export function Peer({ peer, self, withName, withUnread }: PeerProps) {

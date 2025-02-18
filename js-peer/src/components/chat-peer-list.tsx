@@ -6,10 +6,13 @@ import type { PeerId } from '@libp2p/interface'
 import { PeerWrapper } from './peer'
 import { loadTopicsFromStorage, storeTopicsInStorage } from '../lib/libp2p'
 import { isValidTopic, autofixTopicsStorage } from '@/lib/libp2p/topics'
+import { forComponent } from '@/lib/logger'
+
+const log = forComponent('chat-peer-list')
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { roomId, setRoomId } = useChatContext()
+  const { roomId, setRoomId, setRoomType } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
@@ -39,13 +42,28 @@ export function ChatPeerList() {
     setIsCreating(true);
     try {
       const topic = sanitizeTopicName(newTopic);
+      
+      // First subscribe to the topic
+      await libp2p.services.pubsub.subscribe(topic);
+      
+      // Wait a moment for the subscription to take effect
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Get current subscribers to verify subscription worked
+      const subscribers = libp2p.services.pubsub.getSubscribers(topic);
+      log(`Current subscribers for new topic ${topic}:`, subscribers.toString());
+      
+      // Update local state and storage
       const updated = new Set(topics).add(topic);
       storeTopicsInStorage(updated);
       setTopics(Array.from(updated));
       
-      // Subscribe to the new topic and publish its existence
-      await libp2p.services.pubsub.subscribe(topic);
+      // Announce the new topic to other peers
       await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(topic));
+      
+      // Switch to the new room
+      setRoomId(topic);
+      setRoomType('topic');
       setNewTopic('');
     } catch (err) {
       setError('Failed to create room: ' + (err instanceof Error ? err.message : String(err)));
@@ -156,7 +174,10 @@ export function ChatPeerList() {
               return (
                 <button
                   key={topic}
-                  onClick={() => setRoomId(topic)}
+                  onClick={() => {
+                    setRoomId(topic)
+                    setRoomType('topic')
+                  }}
                   className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
                 >
                   <span className={`flex-1 truncate text-left ${isActive ? 'font-medium' : ''}`}>

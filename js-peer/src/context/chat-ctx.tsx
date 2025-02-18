@@ -23,6 +23,7 @@ export interface ChatMessage {
   peerId: string
   read: boolean
   receivedAt: number
+  roomId?: string  // Add optional roomId to track which room a message belongs to
 }
 
 export interface ChatFile {
@@ -37,6 +38,8 @@ export interface DirectMessages {
 
 type Chatroom = string
 
+export type RoomType = 'public' | 'topic' | 'dm'
+
 export interface ChatContextInterface {
   messageHistory: ChatMessage[]
   setMessageHistory: (messageHistory: ChatMessage[] | ((prevMessages: ChatMessage[]) => ChatMessage[])) => void
@@ -44,6 +47,8 @@ export interface ChatContextInterface {
   setDirectMessages: (directMessages: DirectMessages | ((prevMessages: DirectMessages) => DirectMessages)) => void
   roomId: Chatroom
   setRoomId: (chatRoom: Chatroom) => void
+  roomType: RoomType
+  setRoomType: (type: RoomType) => void
   files: Map<string, ChatFile>
   setFiles: (files: Map<string, ChatFile>) => void
 }
@@ -55,6 +60,8 @@ export const chatContext = createContext<ChatContextInterface>({
   setDirectMessages: () => {},
   roomId: '',
   setRoomId: () => {},
+  roomType: 'public',
+  setRoomType: () => {},
   files: new Map<string, ChatFile>(),
   setFiles: () => {},
 })
@@ -68,6 +75,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [directMessages, setDirectMessages] = useState<DirectMessages>({})
   const [files, setFiles] = useState<Map<string, ChatFile>>(new Map<string, ChatFile>())
   const [roomId, setRoomId] = useState<Chatroom>('')
+  const [roomType, setRoomType] = useState<RoomType>('public')
 
   const { libp2p } = useLibp2pContext()
 
@@ -83,7 +91,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     } else if (TOPICS.PEER_DISCOVERY.includes(topicStr as typeof TOPICS.PEER_DISCOVERY[number])) {
       // Do nothing for peer discovery topics
     } else {
-      console.error(`Unexpected event %o on gossipsub topic: ${topic}`, evt)
+      // Handle custom topic messages
+      chatMessageCB(evt, topic, data)
     }
   }
 
@@ -93,17 +102,20 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Append signed messages, otherwise discard
     if (evt.detail.type === 'signed') {
-      setMessageHistory([
-        ...messageHistory,
-        {
-          msgId: crypto.randomUUID(),
-          msg,
-          fileObjectUrl: undefined,
-          peerId: evt.detail.from.toString(),
-          read: false,
-          receivedAt: Date.now(),
-        },
-      ])
+      const newMessage = {
+        msgId: crypto.randomUUID(),
+        msg,
+        fileObjectUrl: undefined,
+        peerId: evt.detail.from.toString(),
+        read: false,
+        receivedAt: Date.now(),
+        roomId: topic
+      }
+
+      // Only add to messageHistory if it's for the current room or public chat
+      if (topic === TOPICS.CHAT[0] || topic === roomId) {
+        setMessageHistory([...messageHistory, newMessage])
+      }
     }
   }
 
@@ -138,6 +150,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
               peerId: senderPeerId.toString(),
               read: false,
               receivedAt: Date.now(),
+              roomId: topic
             }
             setMessageHistory([...messageHistory, msg])
           }
@@ -163,6 +176,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         fileObjectUrl: undefined,
         peerId: peerId,
         receivedAt: Date.now(),
+        roomId: peerId // For DMs, the roomId is the peer's ID
       }
 
       const updatedMessages = directMessages[peerId] ? [...directMessages[peerId], message] : [message]
@@ -212,6 +226,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         roomId,
         setRoomId,
+        roomType,
+        setRoomType,
         messageHistory,
         setMessageHistory,
         directMessages,
