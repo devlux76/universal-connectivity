@@ -122,11 +122,13 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 ## Progress Tracking
 - [ ] Stage 1 - Core Library (0%)
 - [ ] Stage 2 - State Management (0%)
-- [x] Stage 3.1 - Form Controls Refactor (33%)
+- [x] Stage 3.1 - Form Controls Refactor (66%)
   - [x] Created shared form control types and base components
   - [x] Refactored checkbox component
   - [x] Refactored radio component
-  - [ ] Remaining form controls pending
+  - [x] Refactored switch component
+  - [x] Refactored button component into modular structure
+  - [ ] Remaining form controls pending (listbox, dropdown)
 - [ ] Stage 3.2 - Component Library (0%)
 - [ ] Stage 4 - Pages & Routing (0%)
 - [ ] Stage 5 - Testing & Documentation (0%)
@@ -144,4 +146,10 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 - Extracted shared types and base components
 - Refactored checkbox and radio components to use shared logic
 - Reduced duplication in styling and layout code
-- Next: Switch and Button components
+- Refactored switch component to use shared patterns
+- Split button component into modular structure:
+  - Separated types
+  - Extracted styles configuration
+  - Created reusable base styles
+  - Improved component organization
+- Next: Listbox and Dropdown components
