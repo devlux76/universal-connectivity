@@ -122,32 +122,95 @@ export function ChatPeerList() {
     }
   }, [libp2p, topics])
 
+  const { roomUnreads, setRoomUnreads } = useChatContext();
+
+  const handleRoomSelect = (topic: string) => {
+    setRoomId(topic);
+    setRoomType('topic');
+    // Clear unread count when selecting a room
+    setRoomUnreads(prev => ({ ...prev, [topic]: 0 }));
+  };
+
   return (
     <div className="border-l border-gray-300 lg:col-span-1 bg-gray-800 text-white h-full">
       <div className="flex flex-col h-full">
-        <div className="p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold mb-4">Rooms</h2>
-          <div className="flex flex-col gap-2">
-            <input
-              type="text"
-              value={newTopic}
-              onChange={(e) => setNewTopic(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateRoom()}
-              placeholder="Create a new room"
-              className="w-full rounded-md border-0 py-2 px-3 bg-gray-700 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-            />
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button
-              onClick={handleCreateRoom}
-              disabled={isCreating}
-              className={`w-full rounded-md px-3 py-2 text-sm font-semibold shadow-sm transition-colors ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500'}`}
-            >
-              {isCreating ? 'Creating...' : 'Create Room'}
-            </button>
-          </div>
-        </div>
-
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {/* Public Room */}
+          <div className="px-3 py-2 border-b border-gray-700">
+            <h2 className="text-lg font-semibold text-gray-300">Rooms</h2>
+            <div className="mt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setRoomId('');
+                  setRoomType('public');
+                  setRoomUnreads(prev => ({ ...prev, [TOPICS.CHAT[0]]: 0 }));
+                }}
+                className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${roomId === '' ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
+              >
+                <span className={`flex-1 truncate text-left ${roomId === '' ? 'font-medium' : ''}`}>
+                  # The Lobby
+                </span>
+                {roomUnreads[TOPICS.CHAT[0]] > 0 && (
+                  <span className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-full">
+                    {roomUnreads[TOPICS.CHAT[0]]}
+                  </span>
+                )}
+              </button>
+
+              {/* Topic Rooms */}
+              {topics.map((topic) => {
+                const isActive = roomId === topic;
+                const peerCount = subscribers.filter((sub) => sub.toString() === topic).length;
+                const unreadCount = roomUnreads[topic] || 0;
+                
+                return (
+                  <button
+                    key={topic}
+                    onClick={() => handleRoomSelect(topic)}
+                    className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
+                  >
+                    <span className={`flex-1 truncate text-left ${isActive ? 'font-medium' : ''}`}>
+                      # {formatTopicNameForDisplay(topic)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-full">
+                          {unreadCount}
+                        </span>
+                      )}
+                      {peerCount > 0 && (
+                        <span className="text-xs text-gray-400 group-hover:text-gray-300">
+                          {peerCount} {peerCount === 1 ? 'peer' : 'peers'}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Create Room Form */}
+          <div className="px-3 py-2">
+            <div className="flex flex-col gap-2">
+              <input
+                type="text"
+                value={newTopic}
+                onChange={(e) => setNewTopic(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateRoom()}
+                placeholder="Create a new room"
+                className="w-full rounded-md border-0 py-2 px-3 bg-gray-700 text-white placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-800"
+              />
+              {error && <p className="text-red-400 text-sm">{error}</p>}
+              <button
+                onClick={handleCreateRoom}
+                disabled={isCreating}
+                className={`w-full rounded-md px-3 py-2 text-sm font-semibold shadow-sm transition-colors ${isCreating ? 'bg-gray-600 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500'}`}
+              >
+                {isCreating ? 'Creating...' : 'Create Room'}
+              </button>
+            </div>
+          </div>
+          {/* Online Peers */}
           <div className="px-3 py-2 border-b border-gray-700">
             <h2 className="text-lg font-semibold text-gray-300">Online Peers</h2>
             <div className="mt-2">
@@ -164,33 +227,6 @@ export function ChatPeerList() {
                 ))}
               </div>
             </div>
-          </div>
-
-          <div className="px-3 py-2">
-            {topics.map((topic) => {
-              const isActive = roomId === topic;
-              const peerCount = subscribers.filter((sub) => sub.toString() === topic).length;
-              
-              return (
-                <button
-                  key={topic}
-                  onClick={() => {
-                    setRoomId(topic)
-                    setRoomType('topic')
-                  }}
-                  className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
-                >
-                  <span className={`flex-1 truncate text-left ${isActive ? 'font-medium' : ''}`}>
-                    # {formatTopicNameForDisplay(topic)}
-                  </span>
-                  {peerCount > 0 && (
-                    <span className="text-xs text-gray-400 group-hover:text-gray-300">
-                      {peerCount} {peerCount === 1 ? 'peer' : 'peers'}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>

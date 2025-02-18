@@ -13,15 +13,24 @@ import { peerIdFromString } from '@libp2p/peer-id'
 const log = forComponent('chat')
 
 export const PUBLIC_CHAT_ROOM_ID = ''
-const PUBLIC_CHAT_ROOM_NAME = 'Public Chat'
+const PUBLIC_CHAT_ROOM_NAME = 'The Lobby'
 
 export default function ChatContainer() {
   const { libp2p } = useLibp2pContext()
-  const { roomId, setRoomId, setRoomType, roomType } = useChatContext()
+  const { roomId, setRoomId, setRoomType, roomType, setRoomUnreads } = useChatContext()
   const { messageHistory, setMessageHistory, directMessages, setDirectMessages, files, setFiles } = useChatContext()
   const [input, setInput] = useState<string>('')
   const fileRef = useRef<HTMLInputElement>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+
+  // Clear unread count when entering a room
+  useEffect(() => {
+    if (roomType === 'public') {
+      setRoomUnreads(prev => ({ ...prev, [TOPICS.CHAT[0]]: 0 }))
+    } else if (roomType === 'topic' && roomId) {
+      setRoomUnreads(prev => ({ ...prev, [roomId]: 0 }))
+    }
+  }, [roomId, roomType, setRoomUnreads])
 
   // Send message to public chat over gossipsub
   const sendPublicMessage = useCallback(async () => {
@@ -257,7 +266,7 @@ export default function ChatContainer() {
                   <span className={`text-gray-500 flex`}>{roomId.toString().slice(-7)}</span>
                   <button onClick={handleBackToPublic} className="text-gray-500 flex ml-auto">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-500" />
-                    <span>Back to Public Chat</span>
+                    <span>Back to The Lobby</span>
                   </button>
                 </>
               )}
@@ -266,7 +275,7 @@ export default function ChatContainer() {
                   <span className="block ml-2 font-bold text-gray-600">#{roomId}</span>
                   <button onClick={handleBackToPublic} className="text-gray-500 flex ml-auto">
                     <ChevronLeftIcon className="w-6 h-6 text-gray-500" />
-                    <span>Back to Public Chat</span>
+                    <span>Back to The Lobby</span>
                   </button>
                 </>
               )}

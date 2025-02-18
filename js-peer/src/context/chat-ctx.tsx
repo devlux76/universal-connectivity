@@ -40,6 +40,10 @@ type Chatroom = string
 
 export type RoomType = 'public' | 'topic' | 'dm'
 
+export interface RoomUnreads {
+  [roomId: string]: number
+}
+
 export interface ChatContextInterface {
   messageHistory: ChatMessage[]
   setMessageHistory: (messageHistory: ChatMessage[] | ((prevMessages: ChatMessage[]) => ChatMessage[])) => void
@@ -51,6 +55,8 @@ export interface ChatContextInterface {
   setRoomType: (type: RoomType) => void
   files: Map<string, ChatFile>
   setFiles: (files: Map<string, ChatFile>) => void
+  roomUnreads: RoomUnreads
+  setRoomUnreads: (unreads: RoomUnreads | ((prev: RoomUnreads) => RoomUnreads)) => void
 }
 
 export const chatContext = createContext<ChatContextInterface>({
@@ -64,6 +70,8 @@ export const chatContext = createContext<ChatContextInterface>({
   setRoomType: () => {},
   files: new Map<string, ChatFile>(),
   setFiles: () => {},
+  roomUnreads: {},
+  setRoomUnreads: () => {},
 })
 
 export const useChatContext = () => {
@@ -76,6 +84,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [files, setFiles] = useState<Map<string, ChatFile>>(new Map<string, ChatFile>())
   const [roomId, setRoomId] = useState<Chatroom>('')
   const [roomType, setRoomType] = useState<RoomType>('public')
+  const [roomUnreads, setRoomUnreads] = useState<RoomUnreads>({})
 
   const { libp2p } = useLibp2pContext()
 
@@ -112,9 +121,16 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         roomId: topic
       }
 
-      // Only add to messageHistory if it's for the current room or public chat
+      // Add to messageHistory and update unread count if not in the current room
       if (topic === TOPICS.CHAT[0] || topic === roomId) {
         setMessageHistory([...messageHistory, newMessage])
+      }
+      
+      if (topic !== roomId) {
+        setRoomUnreads(prev => ({
+          ...prev,
+          [topic]: (prev[topic] || 0) + 1
+        }))
       }
     }
   }
@@ -234,6 +250,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         setDirectMessages,
         files,
         setFiles,
+        roomUnreads,
+        setRoomUnreads,
       }}
     >
       {children}
