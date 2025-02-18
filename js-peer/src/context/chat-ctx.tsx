@@ -12,7 +12,7 @@ import { pipe } from 'it-pipe'
 import map from 'it-map'
 import * as lp from 'it-length-prefixed'
 import { forComponent } from '@/lib/logger'
-import { DirectMessageEvent, directMessageEvent } from '@/lib/direct-message'
+import { DirectMessageEvent, directMessageEvent } from '@/lib/messages'
 const log = forComponent('chat-context')
 
 export interface ChatMessage {

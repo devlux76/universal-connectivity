@@ -16,7 +16,7 @@ import { webTransport } from '@libp2p/webtransport';
 import { webRTC, webRTCDirect } from '@libp2p/webrtc';
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2';
 import { forComponent, enable } from '../logger';
-import { directMessage } from '../direct-message';
+import { directMessage } from '../messages';
 import { TOPICS, BOOTSTRAP_PEER_IDS, loadUserTopics } from '../constants';
 import { retryWithBackoff, dialWebRTCMaddrs, MAX_RETRIES, INITIAL_BACKOFF_MS } from './dial';
 import type { Libp2pType } from './types';

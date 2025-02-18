@@ -1,10 +1,9 @@
-import { PeerId, Stream, Connection, TypedEventEmitter, Startable } from '@libp2p/interface'
-import { DIRECT_MESSAGE_PROTOCOL, MIME_TEXT_PLAIN } from '@/lib/constants'
+import { TypedEventEmitter, Startable, PeerId, Stream, Connection } from '@libp2p/interface'
 import { serviceCapabilities, serviceDependencies } from '@libp2p/interface'
-import type { ConnectionManager } from '@libp2p/interface-internal'
-import type { Registrar } from '@libp2p/interface-internal'
-import { dm } from '@/lib/protobuf/direct-message'
 import { pbStream } from 'it-protobuf-stream'
+import { DIRECT_MESSAGE_PROTOCOL, MIME_TEXT_PLAIN } from '@/lib/constants'
+import { dm } from '../core/codec'
+import { DirectMessageComponents, DirectMessageEvent, DirectMessageEvents, Status } from '../types/direct-message'
 
 export const dmClientVersion = '0.0.1'
 export const directMessageEvent = 'message'
@@ -15,23 +14,7 @@ const ERRORS = {
   NO_STREAM: 'Failed to create stream',
   NO_RESPONSE: 'No response received',
   NO_METADATA: 'No metadata in response',
-  STATUS_NOT_OK: (status: dm.Status) => `Received status: ${status}, expected OK`,
-}
-
-export interface DirectMessageEvent {
-  content: string
-  type: string
-  stream: Stream
-  connection: Connection
-}
-
-export interface DirectMessageEvents {
-  message: CustomEvent<DirectMessageEvent>
-}
-
-interface DirectMessageComponents {
-  registrar: Registrar
-  connectionManager: ConnectionManager
+  STATUS_NOT_OK: (status: Status) => `Received status: ${status}, expected OK`,
 }
 
 export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implements Startable {
@@ -92,14 +75,12 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
     let stream: Stream | undefined
 
     try {
-      // openConnection will return the current open connection if it already exists, or create a new one
       const conn = await this.components.connectionManager.openConnection(peerId, { signal: AbortSignal.timeout(5000) })
       if (!conn) {
         throw new Error(ERRORS.NO_CONNECTION)
       }
 
-      // Single protocols can skip full negotiation
-      const stream = await conn.newStream(DIRECT_MESSAGE_PROTOCOL, {
+      stream = await conn.newStream(DIRECT_MESSAGE_PROTOCOL, {
         negotiateFully: false,
       })
 
@@ -109,7 +90,7 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
 
       const datastream = pbStream(stream)
 
-      const req: dm.DirectMessageRequest = {
+      const req = {
         content: message,
         type: MIME_TEXT_PLAIN,
         metadata: {
@@ -120,9 +101,9 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
 
       const signal = AbortSignal.timeout(5000)
 
-      await datastream.write(req, dm.DirectMessageRequest, { signal })
+      await datastream.write(req, dm.Request.codec(), { signal })
 
-      const res = await datastream.read(dm.DirectMessageResponse, { signal })
+      const res = await datastream.read(dm.Response.codec(), { signal })
 
       if (!res) {
         throw new Error(ERRORS.NO_RESPONSE)
@@ -132,9 +113,11 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
         throw new Error(ERRORS.NO_METADATA)
       }
 
-      if (res.status !== dm.Status.OK) {
+      if (res.status !== Status.OK) {
         throw new Error(ERRORS.STATUS_NOT_OK(res.status))
       }
+
+      return true
     } catch (e: unknown) {
       if (e instanceof Error) stream?.abort(e)
       throw e
@@ -148,27 +131,23 @@ export class DirectMessage extends TypedEventEmitter<DirectMessageEvents> implem
         throw err
       }
     }
-
-    return true
   }
 
   async receive(stream: Stream, connection: Connection): Promise<void> {
     try {
       const datastream = pbStream(stream)
-
       const signal = AbortSignal.timeout(5000)
+      const req = await datastream.read(dm.Request.codec(), { signal })
 
-      const req = await datastream.read(dm.DirectMessageRequest, { signal })
-
-      const res: dm.DirectMessageResponse = {
-        status: dm.Status.OK,
+      const res = {
+        status: Status.OK,
         metadata: {
           clientVersion: dmClientVersion,
           timestamp: BigInt(Date.now()),
         },
       }
 
-      await datastream.write(res, dm.DirectMessageResponse, { signal })
+      await datastream.write(res, dm.Response.codec(), { signal })
 
       const detail: DirectMessageEvent = {
         content: req.content,
