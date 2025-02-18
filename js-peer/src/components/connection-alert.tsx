@@ -1,9 +1,6 @@
 import { useEffect, useState, Fragment } from 'react';
 import { Transition } from '@headlessui/react';
-import { XCircleIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/solid';
-
-// Removed unused imports
-// import { Alert, AlertTitle, AlertDescription } from './alert';
+import { XCircleIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 interface AlertState {
   show: boolean;
