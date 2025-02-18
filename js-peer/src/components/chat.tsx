@@ -15,6 +15,14 @@ const log = forComponent('chat')
 export const PUBLIC_CHAT_ROOM_ID = ''
 const PUBLIC_CHAT_ROOM_NAME = 'Public Chat'
 
+function tryParsePeerId(str: string) {
+  try {
+    return peerIdFromString(str);
+  } catch (e) {
+    return null; // or undefined, indicating it’s not a valid ID
+  }
+}
+
 export default function ChatContainer() {
   const { libp2p } = useLibp2pContext()
   const { roomId, setRoomId } = useChatContext()
@@ -161,12 +169,11 @@ export default function ChatContainer() {
       if (e.key !== 'Enter') {
         return
       }
-      if (roomId === PUBLIC_CHAT_ROOM_ID) {
-        sendPublicMessage();
-      } else if (libp2p.services.directMessage.isDMPeer(peerIdFromString(roomId))) {
-        sendDirectMessage();
-      } else {
+      const maybePeerId = tryParsePeerId(roomId);
+      if (maybePeerId == null) {
         sendTopicMessage();
+      } else {
+        sendDirectMessage();
       }
     },
     [sendPublicMessage, sendDirectMessage, sendTopicMessage, roomId, libp2p],
