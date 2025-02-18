@@ -1,28 +1,38 @@
-import { useEffect, useState } from 'react';
-import { Alert, AlertTitle, AlertDescription } from './alert';
+import { useEffect, useState, Fragment } from 'react';
+import { Transition } from '@headlessui/react';
+import { XCircleIcon, CheckCircleIcon, XMarkIcon } from '@heroicons/react/solid';
+
+// Removed unused imports
+// import { Alert, AlertTitle, AlertDescription } from './alert';
+
+interface AlertState {
+  show: boolean;
+  details: {
+    isRetry?: boolean;
+    attempt?: number;
+    error?: string;
+    addr?: string;
+  } | null;
+}
 
 export function ConnectionAlert() {
-  const [state, setState] = useState<AlertState>({ show: false, details: null })
+  const [state, setState] = useState<AlertState>({ show: false, details: null });
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const handleConnectionRetry = (event: CustomEvent<{ attempt: number; error: string }>) => {
-      setAttempt(event.detail.attempt);
-      setMessage(event.detail.error);
+      setState({ show: true, details: { isRetry: true, attempt: event.detail.attempt, error: event.detail.error } });
       setIsOpen(true);
     };
-
     const handleDialRetry = (event: CustomEvent<{ attempt: number; error: string; addr: string }>) => {
-      setAttempt(event.detail.attempt);
-      setMessage(`Failed to dial ${event.detail.addr}: ${event.detail.error}`);
+      setState({ show: true, details: { isRetry: true, attempt: event.detail.attempt, error: event.detail.error, addr: event.detail.addr } });
       setIsOpen(true);
     };
-
-    window.addEventListener('libp2p:connection:retry' as any, handleConnectionRetry);
-    window.addEventListener('libp2p:dial:retry' as any, handleDialRetry);
-
+    window.addEventListener('libp2p:connection:retry', handleConnectionRetry as EventListener);
+    window.addEventListener('libp2p:dial:retry', handleDialRetry as EventListener);
     return () => {
-      window.removeEventListener('libp2p:connection:retry' as any, handleConnectionRetry);
-      window.removeEventListener('libp2p:dial:retry' as any, handleDialRetry);
+      window.removeEventListener('libp2p:connection:retry', handleConnectionRetry as EventListener);
+      window.removeEventListener('libp2p:dial:retry', handleDialRetry as EventListener);
     };
   }, []);
 
@@ -85,5 +95,5 @@ export function ConnectionAlert() {
         </div>
       </div>
     </>
-  )
+  );
 }
