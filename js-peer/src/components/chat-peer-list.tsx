@@ -12,7 +12,7 @@ const log = forComponent('chat-peer-list')
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { roomId, setRoomId, setRoomType } = useChatContext()
+  const { activeRoomId, setActiveRoomId, setRoomType } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
@@ -62,7 +62,7 @@ export function ChatPeerList() {
       await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(topic));
       
       // Switch to the new room
-      setRoomId(topic);
+      setActiveRoomId(topic);
       setRoomType('topic');
       setNewTopic('');
     } catch (err) {
@@ -76,8 +76,8 @@ export function ChatPeerList() {
     if (!libp2p?.services?.pubsub) return
 
     const onSubscriptionChange = () => {
-      // Get subscribers from all chat topics and deduplicate them
-      const allSubscribers = TOPICS.CHAT.flatMap(topic => 
+      // Get subscribers from lobby room
+      const allSubscribers = [TOPICS.ROOMS.LOBBY].flatMap(topic => 
         libp2p.services.pubsub.getSubscribers(topic) as PeerId[]
       )
       const uniqueSubscribers = [...new Set(allSubscribers.map(p => p.toString()))]
@@ -168,14 +168,14 @@ export function ChatPeerList() {
 
           <div className="px-3 py-2">
             {topics.map((topic) => {
-              const isActive = roomId === topic;
+              const isActive = activeRoomId === topic;
               const peerCount = subscribers.filter((sub) => sub.toString() === topic).length;
               
               return (
                 <button
                   key={topic}
                   onClick={() => {
-                    setRoomId(topic)
+                    setActiveRoomId(topic)
                     setRoomType('topic')
                   }}
                   className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${isActive ? 'bg-gray-700' : 'hover:bg-gray-700/50'}`}
