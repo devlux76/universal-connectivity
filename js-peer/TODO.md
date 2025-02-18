@@ -36,66 +36,24 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
 
 ## Stage 2: State Management
 ### Chat Context Refactoring
-- [ ] Break down `src/context/chat-ctx.tsx` (301 lines):
+- [x] Break down `src/context/chat-ctx.tsx` (301 lines):
   ```
   src/context/chat/
     ├── index.tsx        # Main provider & context
     ├── types.ts         # Type definitions
     ├── reducers/        # State reducers
     ├── actions.ts       # Action creators
-    └── hooks/           # Custom hooks
+    └── hooks.ts         # Custom hooks
   ```
-  - [ ] Extract state management logic into reducers
-  - [ ] Create specialized hooks for common operations
-  - [ ] Implement proper error boundaries
+  - [x] Extract state management logic into reducers
+  - [x] Create specialized hooks for common operations
+  - [x] Implement proper error boundaries
 
-## Stage 3: Component Library
-### Chat Components
-- [ ] Refactor `src/components/chat.tsx` (296 lines):
-  ```
-  src/components/chat/
-    ├── index.tsx        # Main component
-    ├── message-list/    # Message display
-    ├── input/          # Message input
-    └── controls/       # Chat controls
-  ```
-- [ ] Split `chat-peer-list.tsx` (251 lines) into:
-  - [ ] PeerList container
-  - [ ] Individual peer items
-  - [ ] Status indicators
-  - [ ] Search/filter functionality
+## Stage 3: Component Library [SKIP - Pending React 19 Migration]
+...
 
-### UI Controls
-- [x] Create organized component structure:
-  ```
-  src/components/
-    ├── forms/          # Form controls
-    ├── navigation/     # Nav components
-    ├── layout/        # Layout components
-    └── common/        # Shared utilities
-  ```
-- [x] Refactor form controls:
-  - [x] Move switch.tsx (222 lines) to forms/
-  - [x] Extract shared logic from checkbox.tsx (175 lines) and radio.tsx (157 lines)
-  - [x] Split button.tsx (217 lines) into button variants
-  - [ ] Reorganize listbox.tsx (208 lines)
-  - [ ] Simplify dropdown.tsx (194 lines)
-
-### Navigation & Tables
-- [ ] Refactor table.tsx (145 lines):
-  - [ ] Create separate header component
-  - [ ] Extract row component
-  - [ ] Make cell component configurable
-- [ ] Split nav.tsx (145 lines) into:
-  - [ ] Main navigation container
-  - [ ] Nav items
-  - [ ] Mobile/responsive handlers
-
-## Stage 4: Pages & Routing
-- [ ] Restructure index.tsx (146 lines):
-  - [ ] Extract layout components
-  - [ ] Move data fetching logic to hooks
-  - [ ] Separate routing logic
+## Stage 4: Pages & Routing [SKIP - Pending React 19 Migration]
+...
 
 ## Stage 5: Testing & Documentation
 - [ ] Set up testing infrastructure:
@@ -143,17 +101,37 @@ This document outlines the step-by-step plan to refactor the js-peer codebase in
   - [x] Implemented connection management
   - [x] Added stream handling module
   - [x] Created unified facade
-- [ ] Next: Chat Context refactoring
+- [x] Next: Chat Context refactoring
 
-### 2024-01-xx - Form Controls Refactor
-- [x] Created new forms/ directory structure
-- [x] Extracted shared types and base components
-- [x] Refactored checkbox and radio components to use shared logic
-- [x] Reduced duplication in styling and layout code
-- [x] Refactored switch component to use shared patterns
-- [x] Split button component into modular structure:
-  - [x] Separated types
-  - [x] Extracted styles configuration
-  - [x] Created reusable base styles
-  - [x] Improved component organization
-- [ ] Next: Listbox and Dropdown components
+### 2024-01-xx - Chat Context Refactor
+- [x] Created modular structure for chat context
+- [x] Extracted all type definitions to types.ts
+- [x] Implemented state management with reducers
+- [x] Created action creators for type-safe updates
+- [x] Added specialized hooks for common operations:
+  - [x] useMessageHandling
+  - [x] useFileHandling  
+  - [x] useRoomManagement
+  - [x] useUnreadManagement
+- [x] Migrated to immer for immutable state updates
+- [x] Updated main context provider to use new structure
+- [ ] Next: Testing infrastructure setup
+
+### Memory Log
+- Direct Message System Refactor (Complete)
+  - Split protocol buffer definitions into dedicated files
+  - Created specialized encoders/decoders
+  - Implemented facade pattern for backward compatibility
+  
+- LibP2P Integration Refactor (Complete)
+  - Extracted node initialization into node-creation.ts
+  - Separated peer discovery into peer-discovery.ts
+  - Created connection management in connection.ts
+  - Implemented stream handling in stream.ts
+  - Unified all components through main facade in index.ts
+
+- Chat Context Refactor (Complete)
+  - Split into modular files (types, reducers, actions, hooks)
+  - Implemented immutable updates with immer
+  - Created specialized hooks for common operations
+  - Maintained backward compatibility through context provider
