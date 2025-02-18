@@ -81,7 +81,7 @@ export function Description({
       className={clsx(
         className,
         'text-base/6 text-zinc-500 data-[disabled]:opacity-50 sm:text-sm/6 dark:text-zinc-400',
-        disabled && 'opacity-50'
+        disabled && 'opacity-50',
       )}
     />
   )
@@ -96,8 +96,11 @@ export function ErrorMessage({
     <HeadlessDescription
       {...props}
       data-slot="error"
-      className={clsx(className, 'text-base/6 text-red-600 data-[disabled]:opacity-50 sm:text-sm/6 dark:text-red-500',
-      disabled && 'opacity-50')}
+      className={clsx(
+        className,
+        'text-base/6 text-red-600 data-[disabled]:opacity-50 sm:text-sm/6 dark:text-red-500',
+        disabled && 'opacity-50',
+      )}
     />
   )
 }

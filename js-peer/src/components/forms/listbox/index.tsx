@@ -50,10 +50,7 @@ export function Listbox<T>({
         leaveFrom="opacity-100"
         leaveTo="opacity-0"
       >
-        <HeadlessListboxOptions
-          anchor="selection start"
-          className={clsx(listboxStyles.options.container)}
-        >
+        <HeadlessListboxOptions anchor="selection start" className={clsx(listboxStyles.options.container)}>
           {options}
         </HeadlessListboxOptions>
       </HeadlessTransition>
@@ -61,11 +58,7 @@ export function Listbox<T>({
   )
 }
 
-export function ListboxOption<T>({
-  children,
-  className,
-  ...props
-}: ListboxOptionProps<T>) {
+export function ListboxOption<T>({ children, className, ...props }: ListboxOptionProps<T>) {
   const sharedClasses = clsx(listboxStyles.options.shared)
 
   return (

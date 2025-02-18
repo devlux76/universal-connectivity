@@ -1,4 +1,4 @@
-import { PeerId, Stream, Connection } from '@libp2p/interface'
+import type { Stream, Connection } from '@libp2p/interface'
 import { ConnectionManager, Registrar } from '@libp2p/interface-internal'
 
 export interface DirectMessageEvent {

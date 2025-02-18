@@ -49,7 +49,7 @@ export namespace dm {
               }
             }
             return obj
-          }
+          },
         )
       }
       return _codec
@@ -59,12 +59,12 @@ export namespace dm {
   export const Metadata = {
     codec: createMetadataCodec(),
     encode: (obj: Partial<Metadata>): Uint8Array => encodeMessage(obj, createMetadataCodec()()),
-    decode: (buf: Uint8Array | Uint8ArrayList, opts?: DecodeOptions<Metadata>): Metadata => 
-      decodeMessage(buf, createMetadataCodec()(), opts)
+    decode: (buf: Uint8Array | Uint8ArrayList, opts?: DecodeOptions<Metadata>): Metadata =>
+      decodeMessage(buf, createMetadataCodec()(), opts),
   }
 
   export const Status = {
-    codec: (): Codec<Status> => enumeration<Status>(StatusValues)
+    codec: (): Codec<Status> => enumeration<Status>(StatusValues),
   }
 
   function createRequestCodec(): Codec<DirectMessageRequest> {
@@ -124,7 +124,7 @@ export namespace dm {
               }
             }
             return obj
-          }
+          },
         )
       }
       return _codec
@@ -135,7 +135,7 @@ export namespace dm {
     codec: createRequestCodec(),
     encode: (obj: Partial<DirectMessageRequest>): Uint8Array => encodeMessage(obj, createRequestCodec()()),
     decode: (buf: Uint8Array | Uint8ArrayList, opts?: DecodeOptions<DirectMessageRequest>): DirectMessageRequest =>
-      decodeMessage(buf, createRequestCodec()(), opts)
+      decodeMessage(buf, createRequestCodec()(), opts),
   }
 
   function createResponseCodec(): Codec<DirectMessageResponse> {
@@ -195,7 +195,7 @@ export namespace dm {
               }
             }
             return obj
-          }
+          },
         )
       }
       return _codec
@@ -206,6 +206,6 @@ export namespace dm {
     codec: createResponseCodec(),
     encode: (obj: Partial<DirectMessageResponse>): Uint8Array => encodeMessage(obj, createResponseCodec()()),
     decode: (buf: Uint8Array | Uint8ArrayList, opts?: DecodeOptions<DirectMessageResponse>): DirectMessageResponse =>
-      decodeMessage(buf, createResponseCodec()(), opts)
+      decodeMessage(buf, createResponseCodec()(), opts),
   }
 }

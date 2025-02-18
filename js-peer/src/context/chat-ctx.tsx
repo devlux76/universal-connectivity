@@ -1,11 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useLibp2pContext } from './ctx'
 import type { Message } from '@libp2p/interface'
-import {
-  TOPICS,
-  FILE_EXCHANGE_PROTOCOL,
-  MIME_TEXT_PLAIN,
-} from '@/lib/constants'
+import { TOPICS, FILE_EXCHANGE_PROTOCOL, MIME_TEXT_PLAIN } from '@/lib/constants'
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string'
 import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
 import { pipe } from 'it-pipe'
@@ -22,7 +18,7 @@ export interface ChatMessage {
   peerId: string
   read: boolean
   receivedAt: number
-  roomId?: string  // Add optional roomId to track which room a message belongs to
+  roomId?: string // Add optional roomId to track which room a message belongs to
 }
 
 export interface ChatFile {
@@ -44,7 +40,9 @@ export interface RoomUnreads {
 
 export interface ChatContextInterface {
   rooms: Record<string, RoomState>
-  setRooms: (rooms: Record<string, RoomState> | ((prev: Record<string, RoomState>) => Record<string, RoomState>)) => void
+  setRooms: (
+    rooms: Record<string, RoomState> | ((prev: Record<string, RoomState>) => Record<string, RoomState>),
+  ) => void
   activeRoomId: string
   setActiveRoomId: (roomId: string) => void
   roomType: RoomType
@@ -55,8 +53,8 @@ export interface ChatContextInterface {
   setFiles: (files: Map<string, ChatFile>) => void
   roomUnreads: RoomUnreads
   setRoomUnreads: (unread: RoomUnreads | ((prev: RoomUnreads) => RoomUnreads)) => void
-  messageHistory: ChatMessage[];
-  setMessageHistory: (messages: ChatMessage[]) => void;
+  messageHistory: ChatMessage[]
+  setMessageHistory: (messages: ChatMessage[]) => void
 }
 
 export const chatContext = createContext<ChatContextInterface>({
@@ -73,7 +71,7 @@ export const chatContext = createContext<ChatContextInterface>({
   roomUnreads: {},
   setRoomUnreads: () => {},
   messageHistory: [],
-  setMessageHistory: () => {}
+  setMessageHistory: () => {},
 })
 
 export const useChatContext = () => {
@@ -81,14 +79,14 @@ export const useChatContext = () => {
 }
 
 interface RoomState {
-  messages: ChatMessage[];
-  unread: number;
-  joined: boolean;
+  messages: ChatMessage[]
+  unread: number
+  joined: boolean
 }
 
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
-  const [rooms, setRooms] = useState<Record<string, RoomState>>({ 
-    lobby: { messages: [], unread: 0, joined: true } 
+  const [rooms, setRooms] = useState<Record<string, RoomState>>({
+    lobby: { messages: [], unread: 0, joined: true },
   })
   const [directMessages, setDirectMessages] = useState<DirectMessages>({})
   const [files, setFiles] = useState<Map<string, ChatFile>>(new Map<string, ChatFile>())
@@ -98,140 +96,159 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [messageHistory, setMessageHistory] = useState<ChatMessage[]>([])
   const { libp2p } = useLibp2pContext()
 
-  const chatMessageCB = useCallback((evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
-    const msg = new TextDecoder().decode(data)
-    log(`${topic}: ${msg}`)
+  const chatMessageCB = useCallback(
+    (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
+      const msg = new TextDecoder().decode(data)
+      log(`${topic}: ${msg}`)
 
-    // Append signed messages, otherwise discard
-    if (evt.detail.type === 'signed') {
+      // Append signed messages, otherwise discard
+      if (evt.detail.type === 'signed') {
+        const newMessage: ChatMessage = {
+          msgId: crypto.randomUUID(),
+          msg,
+          fileObjectUrl: undefined,
+          peerId: evt.detail.from.toString(),
+          read: false,
+          receivedAt: Date.now(),
+          roomId: topic,
+        }
+
+        // Determine which room this message belongs to using standard topic handling
+        const roomId =
+          topic === TOPICS.ROOMS.LOBBY
+            ? 'lobby'
+            : topic.startsWith(TOPICS.ROOMS.PREFIX)
+              ? topic.slice(TOPICS.ROOMS.PREFIX.length)
+              : topic
+
+        // Add message to room and update unread count if not in the active room
+        setRooms((prev) => ({
+          ...prev,
+          [roomId]: {
+            ...(prev[roomId] || { messages: [], unread: 0, joined: true }),
+            messages: [...(prev[roomId]?.messages || []), newMessage],
+            unread: roomId !== activeRoomId ? (prev[roomId]?.unread || 0) + 1 : 0,
+          },
+        }))
+      }
+    },
+    [activeRoomId, setRooms],
+  )
+
+  const chatFileMessageCB = useCallback(
+    async (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
+      const newChatFileMessage = (id: string, body: Uint8Array) => {
+        return `File: ${id} (${body.length} bytes)`
+      }
+      const fileId = new TextDecoder().decode(data)
+
+      if (evt.detail.type !== 'signed') {
+        return
+      }
+
+      try {
+        const stream = await libp2p.dialProtocol(evt.detail.from, FILE_EXCHANGE_PROTOCOL)
+        const chunks = await pipe(
+          [fileId],
+          (source) => map(source, (str) => uint8ArrayFromString(str)),
+          stream,
+          async (source) => {
+            const chunks: Uint8Array[] = []
+            for await (const chunk of source) {
+              // Convert Uint8ArrayList to Uint8Array
+              chunks.push(new Uint8Array(chunk.subarray()))
+            }
+            return chunks
+          },
+        )
+
+        const body = chunks[0]
+        const chatFile: ChatFile = {
+          id: fileId,
+          body,
+          sender: evt.detail.from.toString(),
+        }
+
+        setFiles(new Map(files).set(fileId, chatFile))
+
+        const newMessage: ChatMessage = {
+          msgId: crypto.randomUUID(),
+          msg: newChatFileMessage(fileId, body),
+          fileObjectUrl: window.URL.createObjectURL(new Blob([body])),
+          peerId: evt.detail.from.toString(),
+          read: false,
+          receivedAt: Date.now(),
+          roomId: activeRoomId,
+        }
+
+        setRooms((prev) => ({
+          ...prev,
+          [activeRoomId]: {
+            ...prev[activeRoomId],
+            messages: [...(prev[activeRoomId]?.messages || []), newMessage],
+            unread: 0,
+          },
+        }))
+      } catch (err) {
+        log('Failed to retrieve file:', err)
+      }
+    },
+    [libp2p, activeRoomId, setRooms, files, setFiles],
+  )
+
+  const messageCB = useCallback(
+    (evt: CustomEvent<Message>) => {
+      const { topic, data } = evt.detail
+
+      // Using type guards to check topic membership
+      if (topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX)) {
+        chatMessageCB(evt, topic, data)
+      } else if (topic === TOPICS.FILE[0]) {
+        chatFileMessageCB(evt, topic, data)
+      } else if (topic === TOPICS.PEER_DISCOVERY[0]) {
+        // Do nothing for peer discovery topics
+      } else {
+        // Handle custom topic messages
+        chatMessageCB(evt, topic, data)
+      }
+    },
+    [chatMessageCB, chatFileMessageCB],
+  )
+
+  const handleDirectMessage = useCallback(
+    (evt: CustomEvent<DirectMessageEvent>) => {
+      if (evt.detail.type !== MIME_TEXT_PLAIN) {
+        return
+      }
+
       const newMessage: ChatMessage = {
         msgId: crypto.randomUUID(),
-        msg,
+        msg: evt.detail.content,
         fileObjectUrl: undefined,
-        peerId: evt.detail.from.toString(),
+        peerId: evt.detail.connection.remotePeer.toString(),
         read: false,
         receivedAt: Date.now(),
-        roomId: topic
+        roomId: `peer:${evt.detail.connection.remotePeer.toString()}`,
       }
 
-      // Determine which room this message belongs to using standard topic handling
-      const roomId = topic === TOPICS.ROOMS.LOBBY ? 'lobby' : 
-        topic.startsWith(TOPICS.ROOMS.PREFIX) ? topic.slice(TOPICS.ROOMS.PREFIX.length) : topic;
-
-      // Add message to room and update unread count if not in the active room
-      setRooms(prev => ({
+      setDirectMessages((prev) => ({
         ...prev,
-        [roomId]: {
-          ...prev[roomId] || { messages: [], unread: 0, joined: true },
-          messages: [...(prev[roomId]?.messages || []), newMessage],
-          unread: roomId !== activeRoomId ? (prev[roomId]?.unread || 0) + 1 : 0
-        }
-      }));
-    }
-  }, [activeRoomId, setRooms])
-
-  const chatFileMessageCB = useCallback(async (evt: CustomEvent<Message>, topic: string, data: Uint8Array) => {
-    const newChatFileMessage = (id: string, body: Uint8Array) => {
-      return `File: ${id} (${body.length} bytes)`
-    }
-    const fileId = new TextDecoder().decode(data)
-
-    if (evt.detail.type !== 'signed') {
-      return
-    }
-
-    try {
-      const stream = await libp2p.dialProtocol(evt.detail.from, FILE_EXCHANGE_PROTOCOL)
-      const chunks = await pipe(
-        [fileId],
-        (source) => map(source, (str) => uint8ArrayFromString(str)),
-        stream,
-        async (source) => {
-          const chunks: Uint8Array[] = []
-          for await (const chunk of source) {
-            // Convert Uint8ArrayList to Uint8Array
-            chunks.push(new Uint8Array(chunk.subarray()))
-          }
-          return chunks
-        },
-      )
-
-      const body = chunks[0]
-      const chatFile: ChatFile = {
-        id: fileId,
-        body,
-        sender: evt.detail.from.toString(),
-      }
-
-      setFiles(new Map(files).set(fileId, chatFile))
-
-      const newMessage: ChatMessage = {
-        msgId: crypto.randomUUID(),
-        msg: newChatFileMessage(fileId, body),
-        fileObjectUrl: window.URL.createObjectURL(new Blob([body])),
-        peerId: evt.detail.from.toString(),
-        read: false,
-        receivedAt: Date.now(),
-        roomId: activeRoomId
-      }
-
-      setRooms(prev => ({
-        ...prev,
-        [activeRoomId]: {
-          ...prev[activeRoomId],
-          messages: [...(prev[activeRoomId]?.messages || []), newMessage],
-          unread: 0
-        }
-      }));
-    } catch (err) {
-      log('Failed to retrieve file:', err)
-    }
-  }, [libp2p, activeRoomId, setRooms, files, setFiles])
-
-  const messageCB = useCallback((evt: CustomEvent<Message>) => {
-    const { topic, data } = evt.detail
-    
-    // Using type guards to check topic membership
-    if (topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX)) {
-      chatMessageCB(evt, topic, data)
-    } else if (topic === TOPICS.FILE[0]) {
-      chatFileMessageCB(evt, topic, data)
-    } else if (topic === TOPICS.PEER_DISCOVERY[0]) {
-      // Do nothing for peer discovery topics
-    } else {
-      // Handle custom topic messages
-      chatMessageCB(evt, topic, data)
-    }
-  }, [chatMessageCB, chatFileMessageCB])
-
-  const handleDirectMessage = useCallback((evt: CustomEvent<DirectMessageEvent>) => {
-    if (evt.detail.type !== MIME_TEXT_PLAIN) {
-      return
-    }
-
-    const newMessage: ChatMessage = {
-      msgId: crypto.randomUUID(),
-      msg: evt.detail.content,
-      fileObjectUrl: undefined,
-      peerId: evt.detail.connection.remotePeer.toString(),
-      read: false,
-      receivedAt: Date.now(),
-      roomId: `peer:${evt.detail.connection.remotePeer.toString()}`
-    }
-
-    setDirectMessages(prev => ({
-      ...prev,
-      [evt.detail.connection.remotePeer.toString()]: [...(prev[evt.detail.connection.remotePeer.toString()] || []), newMessage]
-    }))
-  }, [setDirectMessages])
+        [evt.detail.connection.remotePeer.toString()]: [
+          ...(prev[evt.detail.connection.remotePeer.toString()] || []),
+          newMessage,
+        ],
+      }))
+    },
+    [setDirectMessages],
+  )
 
   useEffect(() => {
     if (!libp2p?.services?.pubsub) return
 
     // Subscribe to the lobby and file topics
     libp2p.services.pubsub.subscribe(TOPICS.ROOMS.LOBBY)
-    TOPICS.FILE.forEach(topic => libp2p.services.pubsub.subscribe(topic))
-    TOPICS.PEER_DISCOVERY.forEach(topic => libp2p.services.pubsub.subscribe(topic))
+    TOPICS.FILE.forEach((topic) => libp2p.services.pubsub.subscribe(topic))
+    TOPICS.PEER_DISCOVERY.forEach((topic) => libp2p.services.pubsub.subscribe(topic))
 
     // Add event listeners
     libp2p.services.pubsub.addEventListener('message', messageCB)
@@ -244,8 +261,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Unsubscribe from topics
       libp2p.services.pubsub.unsubscribe(TOPICS.ROOMS.LOBBY)
-      TOPICS.FILE.forEach(topic => libp2p.services.pubsub.unsubscribe(topic))
-      TOPICS.PEER_DISCOVERY.forEach(topic => libp2p.services.pubsub.unsubscribe(topic))
+      TOPICS.FILE.forEach((topic) => libp2p.services.pubsub.unsubscribe(topic))
+      TOPICS.PEER_DISCOVERY.forEach((topic) => libp2p.services.pubsub.unsubscribe(topic))
     }
   }, [libp2p, messageCB, handleDirectMessage])
 
@@ -292,7 +309,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         roomUnreads,
         setRoomUnreads,
         messageHistory,
-        setMessageHistory
+        setMessageHistory,
       }}
     >
       {children}

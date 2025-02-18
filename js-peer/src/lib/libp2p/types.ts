@@ -1,3 +1,3 @@
-import type { Libp2p } from '@libp2p/interface';
+import type { Libp2p } from '@libp2p/interface'
 
-export type Libp2pType = Libp2p;
+export type Libp2pType = Libp2p

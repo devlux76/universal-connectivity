@@ -14,14 +14,7 @@ type RoomUnreads = { [roomId: string]: number }
 
 export function ChatPeerList() {
   const { libp2p } = useLibp2pContext()
-  const { 
-    rooms: _rooms,
-    setRooms,
-    activeRoomId, 
-    setActiveRoomId, 
-    roomUnreads, 
-    setRoomUnreads 
-  } = useChatContext()
+  const { rooms: _rooms, setRooms, activeRoomId, setActiveRoomId, roomUnreads, setRoomUnreads } = useChatContext()
   const [subscribers, setSubscribers] = useState<PeerId[]>([])
   const [topics, setTopics] = useState<string[]>([])
   const [newTopic, setNewTopic] = useState('')
@@ -29,80 +22,81 @@ export function ChatPeerList() {
   const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
-    autofixTopicsStorage();
+    autofixTopicsStorage()
     setTopics(Array.from(loadTopicsFromStorage()))
   }, [])
 
   const validateTopicName = (name: string): string | null => {
-    if (!name || !name.trim()) return 'Topic name is required';
-    const sanitized = sanitizeTopicName(name);
-    if (topics.includes(sanitized)) return 'A room with this name already exists';
-    return null;
-  };
+    if (!name || !name.trim()) return 'Topic name is required'
+    const sanitized = sanitizeTopicName(name)
+    if (topics.includes(sanitized)) return 'A room with this name already exists'
+    return null
+  }
 
   const handleCreateRoom = async () => {
-    setError('');
-    const validationError = validateTopicName(newTopic);
+    setError('')
+    const validationError = validateTopicName(newTopic)
     if (validationError) {
-      setError(validationError);
-      return;
+      setError(validationError)
+      return
     }
 
-    setIsCreating(true);
+    setIsCreating(true)
     try {
-      const roomId = sanitizeTopicName(newTopic);
-      
+      const roomId = sanitizeTopicName(newTopic)
+
       // First subscribe to the topic
-      await libp2p.services.pubsub.subscribe(roomId);
-      
+      await libp2p.services.pubsub.subscribe(roomId)
+
       // Wait a moment for the subscription to take effect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
       // Get current subscribers to verify subscription worked
-      const subscribers = libp2p.services.pubsub.getSubscribers(roomId);
-      log(`Current subscribers for new topic ${roomId}:`, subscribers.toString());
-      
+      const subscribers = libp2p.services.pubsub.getSubscribers(roomId)
+      log(`Current subscribers for new topic ${roomId}:`, subscribers.toString())
+
       // Add the new room to state
-      setRooms(prev => ({
+      setRooms((prev) => ({
         ...prev,
         [roomId]: {
           messages: [],
           unread: 0,
-          joined: true
-        }
-      }));
-      
+          joined: true,
+        },
+      }))
+
       // Switch to the new room
-      setActiveRoomId(roomId);
-      
+      setActiveRoomId(roomId)
+
       // Update local state and storage
-      const updatedTopics = [...topics, roomId];
-      setTopics(updatedTopics);
-      storeTopicsInStorage(new Set(updatedTopics));
-      
+      const updatedTopics = [...topics, roomId]
+      setTopics(updatedTopics)
+      storeTopicsInStorage(new Set(updatedTopics))
+
       // Announce the new topic to other peers
-      await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(roomId));
-      
-      setNewTopic('');
+      await libp2p.services.pubsub.publish(TOPICS.PEER_DISCOVERY[0], new TextEncoder().encode(roomId))
+
+      setNewTopic('')
     } catch (err) {
-      setError('Failed to create room: ' + (err as Error).message);
+      setError('Failed to create room: ' + (err as Error).message)
     } finally {
-      setIsCreating(false);
+      setIsCreating(false)
     }
-  };
+  }
 
   useEffect(() => {
     if (!libp2p?.services?.pubsub) return
 
     const onSubscriptionChange = () => {
-      // Get subscribers from all chat topics 
+      // Get subscribers from all chat topics
       const subscribers = libp2p.services.pubsub
         .getTopics()
-        .filter(topic => topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX))
-        .flatMap(topic => libp2p.services.pubsub.getSubscribers(topic))
+        .filter((topic) => topic === TOPICS.ROOMS.LOBBY || topic.startsWith(TOPICS.ROOMS.PREFIX))
+        .flatMap((topic) => libp2p.services.pubsub.getSubscribers(topic))
 
-      const uniqueSubscribers = [...new Set(subscribers.map(p => p.toString()))]
-        .map(str => subscribers.find(p => p.toString() === str)!)
+      const uniqueSubscribers = [...new Set(subscribers.map((p) => p.toString()))].map(
+        (str) => subscribers.find((p) => p.toString() === str)!,
+      )
       setSubscribers(uniqueSubscribers)
     }
 
@@ -129,14 +123,14 @@ export function ChatPeerList() {
         console.error('Failed to process topic message:', error)
       }
     }
-    
+
     // Subscribe to peer discovery topic to receive new room announcements
     libp2p.services.pubsub.subscribe(TOPICS.PEER_DISCOVERY[0])
     libp2p.services.pubsub.addEventListener('message', onMessage)
-    
+
     onSubscriptionChange()
     libp2p.services.pubsub.addEventListener('subscription-change', onSubscriptionChange)
-    
+
     return () => {
       libp2p.services.pubsub.removeEventListener('subscription-change', onSubscriptionChange)
       libp2p.services.pubsub.removeEventListener('message', onMessage)
@@ -144,10 +138,10 @@ export function ChatPeerList() {
   }, [libp2p, topics])
 
   const handleRoomSelect = (roomId: string) => {
-    setActiveRoomId(roomId);
+    setActiveRoomId(roomId)
     // Clear unread count when selecting a room
-    setRoomUnreads((prev: RoomUnreads) => ({ ...prev, [roomId]: 0 }));
-  };
+    setRoomUnreads((prev: RoomUnreads) => ({ ...prev, [roomId]: 0 }))
+  }
 
   return (
     <div className="border-l border-gray-300 lg:col-span-1 bg-gray-800 text-white h-full">
@@ -174,11 +168,11 @@ export function ChatPeerList() {
 
               {/* Topic Rooms */}
               {topics.map((topic) => {
-                const isActive = activeRoomId === topic;
-                const roomTopic = getRoomTopic(topic);
-                const peerCount = libp2p.services.pubsub.getSubscribers(roomTopic).length;
-                const unreadCount = roomUnreads[topic] || 0;
-                
+                const isActive = activeRoomId === topic
+                const roomTopic = getRoomTopic(topic)
+                const peerCount = libp2p.services.pubsub.getSubscribers(roomTopic).length
+                const unreadCount = roomUnreads[topic] || 0
+
                 return (
                   <button
                     key={topic}
@@ -190,9 +184,7 @@ export function ChatPeerList() {
                     </span>
                     <div className="flex items-center gap-2">
                       {unreadCount > 0 && (
-                        <span className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-full">
-                          {unreadCount}
-                        </span>
+                        <span className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-full">{unreadCount}</span>
                       )}
                       {peerCount > 0 && (
                         <span className="text-xs text-gray-400 group-hover:text-gray-300">
@@ -201,7 +193,7 @@ export function ChatPeerList() {
                       )}
                     </div>
                   </button>
-                );
+                )
               })}
             </div>
           </div>
@@ -233,13 +225,7 @@ export function ChatPeerList() {
               <div className="space-y-2">
                 <PeerWrapper peer={libp2p.peerId} self withName={true} withUnread={false} />
                 {subscribers.map((p) => (
-                  <PeerWrapper 
-                    key={p.toString()} 
-                    peer={p} 
-                    self={false} 
-                    withName={true} 
-                    withUnread={true} 
-                  />
+                  <PeerWrapper key={p.toString()} peer={p} self={false} withName={true} withUnread={true} />
                 ))}
               </div>
             </div>

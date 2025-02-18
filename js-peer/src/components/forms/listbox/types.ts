@@ -1,4 +1,7 @@
-import type { ListboxProps as HeadlessListboxProps, ListboxOptionProps as HeadlessListboxOptionProps } from '@headlessui/react'
+import type {
+  ListboxProps as HeadlessListboxProps,
+  ListboxOptionProps as HeadlessListboxOptionProps,
+} from '@headlessui/react'
 import type { Fragment, ComponentPropsWithoutRef } from 'react'
 
 export interface ListboxBaseProps {

@@ -80,6 +80,6 @@ export const baseControlStyles = {
       'group-data-[disabled]:bg-zinc-950/5',
       'dark:group-data-[disabled]:border-white/20',
       'dark:group-data-[disabled]:bg-white/[2.5%]',
-    ]
-  }
+    ],
+  },
 }

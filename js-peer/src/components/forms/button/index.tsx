@@ -12,7 +12,11 @@ export const Button = forwardRef<HTMLElement, ButtonProps>(function Button(
   const styles = clsx(
     className,
     buttonBaseStyles,
-    outline ? buttonStyles.outline : plain ? buttonStyles.plain : clsx(buttonStyles.solid, buttonStyles.colors[color ?? 'dark/zinc']),
+    outline
+      ? buttonStyles.outline
+      : plain
+        ? buttonStyles.plain
+        : clsx(buttonStyles.solid, buttonStyles.colors[color ?? 'dark/zinc']),
   )
 
   return 'href' in props ? (

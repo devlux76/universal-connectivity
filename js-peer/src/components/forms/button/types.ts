@@ -1,5 +1,5 @@
 import type { ButtonProps as HeadlessButtonProps } from '@headlessui/react'
-import type { LinkProps } from './link'
+
 
 export interface ButtonBaseProps {
   className?: string

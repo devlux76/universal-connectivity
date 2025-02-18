@@ -1,5 +1,4 @@
-import type { Message } from '@libp2p/interface'
-import type { Libp2p } from '@libp2p/interface'
+// No imports needed
 
 export interface ChatMessage {
   msgId: string
@@ -44,7 +43,9 @@ export interface ChatState {
 }
 
 export interface ChatContextValue extends ChatState {
-  setRooms: (rooms: Record<string, RoomState> | ((prev: Record<string, RoomState>) => Record<string, RoomState>)) => void
+  setRooms: (
+    rooms: Record<string, RoomState> | ((prev: Record<string, RoomState>) => Record<string, RoomState>),
+  ) => void
   setActiveRoomId: (roomId: string) => void
   setRoomType: (type: RoomType) => void
   setDirectMessages: (directMessages: DirectMessages | ((prevMessages: DirectMessages) => DirectMessages)) => void

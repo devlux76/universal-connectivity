@@ -1,6 +1,6 @@
 import type {
   MenuProps as HeadlessMenuProps,
-  MenuButtonProps as HeadlessMenuButtonProps,
+
   MenuItemProps as HeadlessMenuItemProps,
   MenuItemsProps as HeadlessMenuItemsProps,
   MenuHeadingProps as HeadlessMenuHeadingProps,
@@ -9,18 +9,18 @@ import type {
   DescriptionProps as HeadlessDescriptionProps,
 } from '@headlessui/react'
 import type { ComponentPropsWithoutRef, ElementType } from 'react'
-import type { ButtonProps } from '../button/types'
+
 
 export interface DropdownProps extends HeadlessMenuProps {}
 
-export interface DropdownButtonProps<T extends ElementType> extends React.ComponentProps<typeof HeadlessMenuButton<T>> {}
+export interface DropdownButtonProps<T extends ElementType>
+  extends React.ComponentProps<typeof HeadlessMenuButton<T>> {}
 
 export interface DropdownItemProps extends HeadlessMenuItemProps<'button'> {
   href?: string
 }
 
-export interface DropdownMenuProps extends HeadlessMenuItemsProps {
-}
+export interface DropdownMenuProps extends HeadlessMenuItemsProps {}
 
 export interface DropdownHeaderProps extends ComponentPropsWithoutRef<'div'> {}
 

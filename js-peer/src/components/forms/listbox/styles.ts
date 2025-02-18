@@ -79,9 +79,7 @@ export const listboxStyles = {
       'stroke-zinc-500 group-data-[disabled]:stroke-zinc-600 sm:size-4',
       'dark:stroke-zinc-400 forced-colors:stroke-[CanvasText]',
     ],
-    label: [
-      'ml-2.5 truncate first:ml-0 sm:ml-2 sm:first:ml-0',
-    ],
+    label: ['ml-2.5 truncate first:ml-0 sm:ml-2 sm:first:ml-0'],
     description: [
       'flex flex-1 overflow-hidden text-zinc-500',
       'before:w-2 before:min-w-0 before:shrink',
@@ -99,6 +97,6 @@ export const listboxStyles = {
 
       // Avatars
       '[&>[data-slot=avatar]]:size-6 sm:[&>[data-slot=avatar]]:size-5',
-    ]
-  }
+    ],
+  },
 }
