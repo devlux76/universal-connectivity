@@ -18,17 +18,82 @@ import { webRTC, webRTCDirect } from '@libp2p/webrtc'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
 import { pubsubPeerDiscovery } from '@libp2p/pubsub-peer-discovery'
 import { ping } from '@libp2p/ping'
-import { BOOTSTRAP_PEER_IDS, CHAT_FILE_TOPIC, CHAT_TOPIC, PUBSUB_PEER_DISCOVERY } from './constants'
+import { TOPICS, BOOTSTRAP_PEER_IDS, loadUserTopics } from './constants'
 import first from 'it-first'
 import { forComponent, enable } from './logger'
 import { directMessage } from './direct-message'
 import type { Libp2pType } from '@/context/ctx'
 import { generateKeyPair, privateKeyFromProtobuf, privateKeyToProtobuf } from '@libp2p/crypto/keys'
+import { useEffect } from 'react'
+import { useLibp2pContext } from '@/context/ctx'
 
 const log = forComponent('libp2p')
 
 const MAX_RETRIES = 30;
 const INITIAL_BACKOFF_MS = 1000;
+
+const TOPICS_STORAGE_KEY = 'subscribedTopics'
+
+export function loadTopicsFromStorage(): Set<string> {
+  try {
+    const data = localStorage.getItem(TOPICS_STORAGE_KEY)
+    if (!data) return new Set()
+    return new Set(JSON.parse(data))
+  } catch {
+    return new Set()
+  }
+}
+
+export function storeTopicsInStorage(topics: Set<string>) {
+  localStorage.setItem(TOPICS_STORAGE_KEY, JSON.stringify(Array.from(topics)))
+}
+
+export function useAutoSubscribeToNewTopics() {
+  const { libp2p } = useLibp2pContext()
+
+  useEffect(() => {
+    // Don't run the effect until libp2p is initialized
+    if (!libp2p?.services?.pubsub) {
+      return;
+    }
+
+    const knownTopics = loadTopicsFromStorage()
+    for (const t of libp2p.services.pubsub.getTopics()) {
+      knownTopics.add(t)
+    }
+
+    const onSubscriptionChange = () => {
+      for (const topic of libp2p.services.pubsub.getTopics()) {
+        if (!knownTopics.has(topic)) {
+          knownTopics.add(topic)
+          libp2p.services.pubsub.subscribe(topic)
+          storeTopicsInStorage(knownTopics)
+        }
+      }
+    }
+
+    libp2p.services.pubsub.addEventListener('subscription-change', onSubscriptionChange)
+
+    // Re-subscribe to stored topics
+    knownTopics.forEach((t) => {
+      if (!libp2p.services.pubsub.getTopics().includes(t)) {
+        try {
+          libp2p.services.pubsub.subscribe(t)
+        } catch (err) {
+          console.error(`Failed to resubscribe to topic ${t}:`, err)
+        }
+      }
+    })
+
+    storeTopicsInStorage(knownTopics)
+
+    return () => {
+      libp2p.services.pubsub.removeEventListener('subscription-change', onSubscriptionChange)
+    }
+  }, [libp2p?.services?.pubsub]) // Only re-run when pubsub service changes
+
+  return null
+}
 
 async function retryWithBackoff<T>(
   operation: () => Promise<T>,
@@ -50,6 +115,26 @@ async function retryWithBackoff<T>(
   }
 }
 
+const LIBP2P_STORAGE_KEY = 'libp2p-key';
+
+export function loadLibp2pKey(): Uint8Array | null {
+  try {
+    const storedKey = localStorage.getItem(LIBP2P_STORAGE_KEY);
+    return storedKey ? new Uint8Array(JSON.parse(storedKey)) : null;
+  } catch (error) {
+    console.error('Failed to load libp2p key from localStorage:', error);
+    return null;
+  }
+}
+
+export function saveLibp2pKey(privateKey: Uint8Array): void {
+  try {
+    localStorage.setItem(LIBP2P_STORAGE_KEY, JSON.stringify(Array.from(privateKey)));
+  } catch (error) {
+    console.error('Failed to save libp2p key to localStorage:', error);
+  }
+}
+
 export async function startLibp2p(): Promise<Libp2pType> {
   // enable verbose logging in browser console to view debug logs
   enable('ui*,libp2p*,-libp2p:connection-manager*,-*:trace')
@@ -61,12 +146,12 @@ export async function startLibp2p(): Promise<Libp2pType> {
 
   let privateKey;
   try {
-    const storedKey = localStorage.getItem('libp2p-key');
-    privateKey = storedKey ? privateKeyFromProtobuf(Uint8Array.from(JSON.parse(storedKey))) : await generateKeyPair('Ed25519');
-    if (!storedKey) localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
+    const storedKey = loadLibp2pKey();
+    privateKey = storedKey ? privateKeyFromProtobuf(storedKey) : await generateKeyPair('Ed25519');
+    if (!storedKey) saveLibp2pKey(privateKeyToProtobuf(privateKey));
   } catch {
     privateKey = await generateKeyPair('Ed25519');
-    localStorage.setItem('libp2p-key', JSON.stringify(Array.from(privateKeyToProtobuf(privateKey))));
+    saveLibp2pKey(privateKeyToProtobuf(privateKey));
   }
 
   const createNode = async () => {
@@ -99,7 +184,7 @@ export async function startLibp2p(): Promise<Libp2pType> {
       peerDiscovery: [
         pubsubPeerDiscovery({
           interval: 10_000,
-          topics: [PUBSUB_PEER_DISCOVERY],
+          topics: [...TOPICS.PEER_DISCOVERY],
           listenOnly: false,
         }),
         bootstrap({
@@ -145,8 +230,26 @@ export async function startLibp2p(): Promise<Libp2pType> {
     }
   );
 
-  libp2p.services.pubsub.subscribe(CHAT_TOPIC)
-  libp2p.services.pubsub.subscribe(CHAT_FILE_TOPIC)
+  const userTopics = loadUserTopics();
+  const allTopics = {
+    CHAT: [...TOPICS.CHAT, ...(userTopics.CHAT || [])],
+    FILE: [...TOPICS.FILE, ...(userTopics.FILE || [])],
+    PEER_DISCOVERY: [...TOPICS.PEER_DISCOVERY, ...(userTopics.PEER_DISCOVERY || [])],
+    STREAMING: [...TOPICS.STREAMING, ...(userTopics.STREAMING || [])]
+  };
+
+  for (const topic of allTopics.CHAT) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
+  for (const topic of allTopics.FILE) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
+  for (const topic of allTopics.PEER_DISCOVERY) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
+  for (const topic of allTopics.STREAMING) {
+    libp2p.services.pubsub.subscribe(topic);
+  }
 
   libp2p.addEventListener('self:peer:update', ({ detail: { peer } }) => {
     const multiaddrs = peer.addresses.map(({ multiaddr }) => multiaddr)
