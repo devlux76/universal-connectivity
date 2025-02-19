@@ -1,18 +1,23 @@
 import type { DescriptionProps as HeadlessDescriptionProps, FieldProps as HeadlessFieldProps, LabelProps as HeadlessLabelProps } from '@headlessui/react'
 import type { ComponentPropsWithoutRef } from 'react'
 
-export interface FormControlProps {
-  className?: string
+// Base form control props without className
+interface BaseFormControlProps {
   disabled?: boolean
 }
 
+// Extended form control props for regular components
+export interface FormControlProps extends BaseFormControlProps, Pick<ComponentPropsWithoutRef<'div'>, 'className'> {}
+
+// Extended form control props for HeadlessUI components
+export interface HeadlessFormControlProps extends BaseFormControlProps {
+  className?: string | ((bag: { disabled: boolean }) => string)
+}
+
 export interface FormGroupProps extends ComponentPropsWithoutRef<'div'>, FormControlProps {}
-
 export interface FormFieldProps extends ComponentPropsWithoutRef<'div'>, FormControlProps {}
-
-export interface FormLabelProps extends HeadlessLabelProps, FormControlProps {}
-
-export interface FormDescriptionProps extends HeadlessDescriptionProps, FormControlProps {}
+export interface FormLabelProps extends Omit<HeadlessLabelProps, 'className'>, HeadlessFormControlProps {}
+export interface FormDescriptionProps extends Omit<HeadlessDescriptionProps, 'className'>, HeadlessFormControlProps {}
 
 export interface ColorVariant {
   'dark/zinc': string[]

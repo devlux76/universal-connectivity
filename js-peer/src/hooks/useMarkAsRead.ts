@@ -15,8 +15,7 @@ export const useMarkAsRead = (msgId: string, peerId: string, read: boolean, dm: 
 
     if (dm) {
       const updatedDMs = directMessages[peerId]
-
-      if (updatedDMs.some((m) => m.msgId === msgId && !m.read)) {
+      if (updatedDMs?.some((m) => m.msgId === msgId && !m.read)) {
         setDirectMessages((prev) => ({
           ...prev,
           [peerId]: markAsRead(updatedDMs, msgId),
@@ -24,7 +23,7 @@ export const useMarkAsRead = (msgId: string, peerId: string, read: boolean, dm: 
       }
     } else {
       if (messageHistory.some((m) => m.msgId === msgId && !m.read)) {
-        setMessageHistory((prev: ChatMessage[]) => markAsRead(prev, msgId))
+        setMessageHistory(markAsRead(messageHistory, msgId))
       }
     }
   }, [dm, directMessages, messageHistory, msgId, peerId, read, setDirectMessages, setMessageHistory, markAsRead])

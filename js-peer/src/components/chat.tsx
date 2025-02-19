@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useChatContext } from '../context/chat-ctx'
+import { useChatContext } from '@/context/chat'
 import { ChatMessage } from '@/context/chat/types'
 import { ChatHeader } from './chat/ChatHeader'
 import { MessageList } from './chat/MessageList'

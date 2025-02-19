@@ -17,13 +17,13 @@ export function MessageInput({ activeRoomId, roomType }: MessageInputProps) {
   const sendMessage = useCallback(async () => {
     if (input === '') return
 
-    let success = false
+    let success: boolean = false
     if (roomType === 'topic' && activeRoomId === PUBLIC_CHAT_ROOM_ID) {
-      success = await sendPublicMessage(input)
+      success = await sendPublicMessage(input) || false
     } else if (roomType === 'dm') {
-      success = await sendDirectMessage(input, activeRoomId)
+      success = await sendDirectMessage(input, activeRoomId) || false
     } else {
-      success = await sendTopicMessage(input, activeRoomId)
+      success = await sendTopicMessage(input, activeRoomId) || false
     }
 
     if (success) {

@@ -237,3 +237,5 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
   return <chatContext.Provider value={contextValue}>{children}</chatContext.Provider>
 }
+
+export type { ChatMessage }
