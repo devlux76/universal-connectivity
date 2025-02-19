@@ -4,6 +4,7 @@ import { fromString as uint8ArrayFromString } from 'uint8arrays/from-string'
 import { forComponent } from '@/lib/logger'
 import { FILE_EXCHANGE_PROTOCOL } from '@/lib/constants'
 import type { Message } from '@libp2p/interface'
+import type { Libp2p } from 'libp2p'
 import type { ChatMessage, RoomState } from './types'
 
 const log = forComponent('file-handler')
@@ -18,7 +19,7 @@ export const handleFileMessage = async (
   evt: CustomEvent<Message>,
   topic: string,
   data: Uint8Array,
-  libp2p: any,
+  libp2p: Libp2p,
   activeRoomId: string,
   files: Map<string, ChatFile>,
   setFiles: (files: Map<string, ChatFile>) => void,

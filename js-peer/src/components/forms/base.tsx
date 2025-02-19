@@ -15,11 +15,12 @@ export function FormGroup({ className, ...props }: FormGroupProps) {
   )
 }
 
-export function FormField({ className, ...props }: FormFieldProps) {
+export function FormField({ className, children, ...props }: FormFieldProps & { children: React.ReactNode }) {
   return (
     <div
       data-slot="field"
       {...props}
+
       className={clsx(
         className,
         // Base layout

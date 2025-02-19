@@ -1,4 +1,4 @@
-import type { HeadlessDescriptionProps, HeadlessFieldProps, HeadlessLabelProps } from '@headlessui/react'
+import type { DescriptionProps as HeadlessDescriptionProps, FieldProps as HeadlessFieldProps, LabelProps as HeadlessLabelProps } from '@headlessui/react'
 import type { ComponentPropsWithoutRef } from 'react'
 
 export interface FormControlProps {
@@ -8,7 +8,7 @@ export interface FormControlProps {
 
 export interface FormGroupProps extends ComponentPropsWithoutRef<'div'>, FormControlProps {}
 
-export interface FormFieldProps extends HeadlessFieldProps, FormControlProps {}
+export interface FormFieldProps extends ComponentPropsWithoutRef<'div'>, FormControlProps {}
 
 export interface FormLabelProps extends HeadlessLabelProps, FormControlProps {}
 

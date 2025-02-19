@@ -1,7 +1,7 @@
 import { useLibp2pContext } from '@/context/ctx'
 import { useEffect, useState } from 'react'
 import { PeerId } from '@libp2p/interface'
-import { useChatContext } from '@/context/chat-ctx'
+import { useChatContext } from '@/context/chat'
 import Blockies from 'react-18-blockies'
 
 export interface PeerProps {

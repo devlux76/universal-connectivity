@@ -1,6 +1,6 @@
 import type {
   MenuProps as HeadlessMenuProps,
-  Menu as HeadlessMenuButton,
+
   MenuItemProps as HeadlessMenuItemProps,
   MenuItemsProps as HeadlessMenuItemsProps,
   MenuHeadingProps as HeadlessMenuHeadingProps,

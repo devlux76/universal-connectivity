@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from 'react'
-import { ChatMessage, useChatContext } from '@/context/chat-ctx'
+import { ChatMessage, useChatContext } from '@/context/chat'
 
 export const useMarkAsRead = (msgId: string, peerId: string, read: boolean, dm: boolean) => {
   const { messageHistory, setMessageHistory, directMessages, setDirectMessages } = useChatContext()
