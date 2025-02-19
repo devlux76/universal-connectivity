@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { startLibp2p } from '../lib/libp2p'
-import { ChatProvider } from './chat-ctx'
+import { ChatProvider } from './chat'
 import type { Libp2p, PubSub } from '@libp2p/interface'
 import type { Identify } from '@libp2p/identify'
 import type { DirectMessage } from '@/lib/messages'

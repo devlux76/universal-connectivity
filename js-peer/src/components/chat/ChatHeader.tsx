@@ -6,13 +6,13 @@ const PUBLIC_CHAT_ROOM_ID = ''
 const PUBLIC_CHAT_ROOM_NAME = 'The Lobby'
 
 interface ChatHeaderProps {
-  roomId: string
+  activeRoomId: string
   roomType: RoomType
   onBackToLobby: () => void
 }
 
-export function ChatHeader({ roomId, roomType, onBackToLobby }: ChatHeaderProps) {
-  if (roomType === 'topic' && roomId === PUBLIC_CHAT_ROOM_ID) {
+export function ChatHeader({ activeRoomId, roomType, onBackToLobby }: ChatHeaderProps) {
+  if (roomType === 'topic' && activeRoomId === PUBLIC_CHAT_ROOM_ID) {
     return (
       <div className="relative flex items-center p-3 border-b border-gray-300">
         <span className="block ml-2 font-bold text-gray-600">{PUBLIC_CHAT_ROOM_NAME}</span>
@@ -30,8 +30,8 @@ export function ChatHeader({ roomId, roomType, onBackToLobby }: ChatHeaderProps)
   if (roomType === 'dm') {
     return (
       <div className="relative flex items-center p-3 border-b border-gray-300">
-        <Blockies seed={roomId} size={8} scale={3} className="rounded mr-2 max-h-10 max-w-10" />
-        <span className="text-gray-500 flex">{roomId.toString().slice(-7)}</span>
+        <Blockies seed={activeRoomId} size={8} scale={3} className="rounded mr-2 max-h-10 max-w-10" />
+        <span className="text-gray-500 flex">{activeRoomId.toString().slice(-7)}</span>
         <BackButton />
       </div>
     )
@@ -39,7 +39,7 @@ export function ChatHeader({ roomId, roomType, onBackToLobby }: ChatHeaderProps)
 
   return (
     <div className="relative flex items-center p-3 border-b border-gray-300">
-      <span className="block ml-2 font-bold text-gray-600">#{roomId}</span>
+      <span className="block ml-2 font-bold text-gray-600">#{activeRoomId}</span>
       <BackButton />
     </div>
   )

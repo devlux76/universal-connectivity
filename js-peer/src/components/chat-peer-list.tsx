@@ -11,7 +11,7 @@ export function ChatPeerList() {
   const { activeRoomId, setActiveRoomId, setRoomType } = useChatContext()
   const { subscribers, topics, isCreating, createRoom } = useRoomManagement()
 
-  const handleSelectRoom = (topic: string) => {
+  const handleSelectActiveRoom = (topic: string) => {
     setActiveRoomId(topic)
     setRoomType('topic')
   }
@@ -36,7 +36,7 @@ export function ChatPeerList() {
             topics={topics}
             activeRoomId={activeRoomId}
             subscribers={subscribers}
-            onSelectRoom={handleSelectRoom}
+            onSelectActiveRoom={handleSelectActiveRoom}
           />
         </div>
       </div>

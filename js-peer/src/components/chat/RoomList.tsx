@@ -5,10 +5,10 @@ interface RoomListProps {
   topics: string[]
   activeRoomId: string
   subscribers: PeerId[]
-  onSelectRoom: (topic: string) => void
+  onSelectActiveRoom: (topic: string) => void
 }
 
-export function RoomList({ topics, activeRoomId, subscribers, onSelectRoom }: RoomListProps) {
+export function RoomList({ topics, activeRoomId, subscribers, onSelectActiveRoom }: RoomListProps) {
   return (
     <div className="px-3 py-2">
       {topics.map((topic) => {
@@ -18,7 +18,7 @@ export function RoomList({ topics, activeRoomId, subscribers, onSelectRoom }: Ro
         return (
           <button
             key={topic}
-            onClick={() => onSelectRoom(topic)}
+            onClick={() => onSelectActiveRoom(topic)}
             className={`w-full group flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
               isActive ? 'bg-gray-700' : 'hover:bg-gray-700/50'
             }`}

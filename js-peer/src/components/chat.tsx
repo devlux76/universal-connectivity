@@ -35,7 +35,7 @@ export default function ChatContainer() {
         <div className="lg:col-span-5 lg:block">
           <div className="w-full">
             <ChatHeader 
-              roomId={activeRoomId}
+              activeRoomId={activeRoomId}
               roomType={roomType}
               onBackToLobby={handleBackToLobby}
             />
@@ -44,7 +44,7 @@ export default function ChatContainer() {
               roomType={roomType}
             />
             <MessageInput
-              roomId={activeRoomId}
+              activeRoomId={activeRoomId}
               roomType={roomType}
             />
           </div>

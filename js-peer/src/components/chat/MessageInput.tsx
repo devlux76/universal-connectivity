@@ -5,11 +5,11 @@ import { useMessageHandling } from '@/hooks/useMessageHandling'
 const PUBLIC_CHAT_ROOM_ID = ''
 
 interface MessageInputProps {
-  roomId: string
+  activeRoomId: string
   roomType: RoomType
 }
 
-export function MessageInput({ roomId, roomType }: MessageInputProps) {
+export function MessageInput({ activeRoomId, roomType }: MessageInputProps) {
   const [input, setInput] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const { sendPublicMessage, sendDirectMessage, sendTopicMessage, handleFile } = useMessageHandling()
@@ -18,18 +18,18 @@ export function MessageInput({ roomId, roomType }: MessageInputProps) {
     if (input === '') return
 
     let success = false
-    if (roomType === 'topic' && roomId === PUBLIC_CHAT_ROOM_ID) {
+    if (roomType === 'topic' && activeRoomId === PUBLIC_CHAT_ROOM_ID) {
       success = await sendPublicMessage(input)
     } else if (roomType === 'dm') {
-      success = await sendDirectMessage(input, roomId)
+      success = await sendDirectMessage(input, activeRoomId)
     } else {
-      success = await sendTopicMessage(input, roomId)
+      success = await sendTopicMessage(input, activeRoomId)
     }
 
     if (success) {
       setInput('')
     }
-  }, [input, roomId, roomType, sendPublicMessage, sendDirectMessage, sendTopicMessage])
+  }, [input, activeRoomId, roomType, sendPublicMessage, sendDirectMessage, sendTopicMessage])
 
   const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
@@ -50,7 +50,7 @@ export function MessageInput({ roomId, roomType }: MessageInputProps) {
     }
   }, [handleFile])
 
-  const canUploadFiles = roomType === 'topic' && roomId === PUBLIC_CHAT_ROOM_ID
+  const canUploadFiles = roomType === 'topic' && activeRoomId === PUBLIC_CHAT_ROOM_ID
 
   return (
     <div className="flex items-center justify-between w-full p-3 border-t border-gray-300">
